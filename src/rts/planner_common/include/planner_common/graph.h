@@ -13,7 +13,7 @@
 #include <boost/property_map/transform_value_property_map.hpp>
 #include <boost/graph/floyd_warshall_shortest.hpp>
 
-
+#include <ros/ros.h>
 
 // namespace explorer {
 

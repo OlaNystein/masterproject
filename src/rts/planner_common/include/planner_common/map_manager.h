@@ -5,7 +5,7 @@
 #include "planner_common/params.h"
 
 // namespace explorer {
-
+// namespace gbplanner {
 class MapManager {
  public:
   enum VoxelStatus { kUnknown = 0, kOccupied, kFree };
@@ -18,10 +18,6 @@ class MapManager {
   virtual VoxelStatus getRayStatus(const Eigen::Vector3d& view_point,
                                    const Eigen::Vector3d& voxel_to_test,
                                    bool stop_at_unknown_voxel) const = 0;
-  virtual VoxelStatus getRayStatus(const Eigen::Vector3d& view_point,
-                                   const Eigen::Vector3d& voxel_to_test,
-                                   bool stop_at_unknown_voxel,
-                                   Eigen::Vector3d &end_voxel) const = 0;
   virtual VoxelStatus getBoxStatus(const Eigen::Vector3d& center,
                                    const Eigen::Vector3d& size,
                                    bool stop_at_unknown_voxel) const = 0;
@@ -31,12 +27,11 @@ class MapManager {
                                     bool stop_at_unknown_voxel) const = 0;
   virtual bool augmentFreeBox(const Eigen::Vector3d& position,
                               const Eigen::Vector3d& box_size) = 0;
-
+  // input under: std::tuple<int, int, int> & gain_log,
   virtual void getScanStatus(
       Eigen::Vector3d& pos, std::vector<Eigen::Vector3d>& multiray_endpoints,
-      std::tuple<int, int, int> & gain_log,
-      std::vector<std::pair<Eigen::Vector3d, VoxelStatus>>& voxel_log,
-      SensorParamsBase &sensor_params) = 0;
+      std::vector<std::pair<Eigen::Vector3d, VoxelStatus>>&
+          voxel_log) = 0;
 
   virtual void augmentFreeFrustum()  = 0;
 
@@ -58,6 +53,7 @@ class MapManager {
   ros::NodeHandle nh_private_;
 };
 
+// }  // namespace gbplanner
 // }  // namespace explorer
 
 #endif

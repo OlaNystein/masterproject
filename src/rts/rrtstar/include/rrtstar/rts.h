@@ -14,6 +14,8 @@
 #include "planner_msgs/planner_search.h"
 
 #include "rrtstar_msgs/build_tree.h"
+#include "rrtstar_msgs/search.h"
+
 
 namespace search {
 
@@ -38,9 +40,9 @@ class RTS {
 
   rrtstar::Rrtstar* rrtstar_;
 
-  bool plannerSearchServiceCallback(
-    planner_msgs::planner_search::Request& req,
-    planner_msgs::planner_search::Response& res);
+  bool searchServiceCallback(
+    rrtstar_msgs::search::Request& req,
+    rrtstar_msgs::search::Response& res);
   
   bool buildTreeServiceCallback(
     rrtstar_msgs::build_tree::Request& req,

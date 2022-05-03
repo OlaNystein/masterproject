@@ -31,8 +31,16 @@ PlannerControlInterface::PlannerControlInterface(
       &PlannerControlInterface::initializationCallback, this);
   //
 
+  pci_search_server_ = nh_.advertiseService("pci_search", &PlannerControlInterface::searchCallback, this);
 
+  search_client_ = nh_.serviceClient<rrtstar_msgs::search>("rts/search");
 
+  while (!(search_client_ = nh.serviceClient<rrtstar_msgs::search>(
+               "rts/search", true))) {  // true for persistent
+    ROS_WARN("PCI: service search_server is not available: waiting...");
+    sleep(1);
+  }
+  ROS_INFO("PCI: connected to service search_server.");
   
 
   
@@ -51,10 +59,19 @@ PlannerControlInterface::PlannerControlInterface(
     ROS_ERROR("Can not initialize the node. Shut down ROS node.");
     ros::shutdown();
   }
+  current_target_ = current_pose_;
   run();
 }
 
+bool PlannerControlInterface::searchCallback(rrtstar_msgs::pci_search::Request &req,
+                      rrtstar_msgs::pci_search::Response &res) {
+  search_request_ = true;
+  ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
 
+  current_target_ = req.target;
+  res.success = true;
+  return true;
+}
 
 
 bool PlannerControlInterface::goToWaypointCallback(
@@ -125,6 +142,9 @@ bool PlannerControlInterface::init() {
   init_request_ = false;
   global_request_ = false;
 
+  search_request_ = false;
+  target_reached_ = false;
+
   go_to_waypoint_request_ = false;
   // Wait for the system is ready.
   // For example: checking odometry is ready.
@@ -150,10 +170,12 @@ void PlannerControlInterface::run() {
         init_request_ = false;
         ROS_INFO("PlannerControlInterface: Running Initialization");
         runInitialization();
-      }  // Priority 3: Stop.
-      else if (go_to_waypoint_request_) {
-        go_to_waypoint_request_ = false;
-        pci_manager_->goToWaypoint(set_waypoint_);
+      }  // Priority 2: Search
+      else if (search_request_) {
+        runSearch();
+        if (target_reached_){
+          search_request_ = false;
+        }
       }
     } else if (pci_status == PCIManager::PCIStatus::kError) {
       // Reset everything to manual then wait for operator.
@@ -297,5 +319,40 @@ void PlannerControlInterface::processPose(const geometry_msgs::Pose &pose) {
   }
   pose_is_ready_ = true;
 }
+
+void PlannerControlInterface::runSearch() {
+  ROS_INFO("Planning iteration %i", search_iteration_);
+  rrtstar_msgs::search search_srv;
+  search_srv.request.target = current_target_;
+
+    if (search_client_.call(search_srv)) {
+      if (!search_srv.response.path.empty()) {
+        // Execute path
+        ROS_INFO("Executing path. ");
+        std::vector<geometry_msgs::Pose> path_to_be_exe;
+        pci_manager_->executePath(search_srv.response.path, path_to_be_exe,
+                                  PCIManager::ExecutionPathType::kGlobalPath);
+        
+        ROS_WARN("Printing first node in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[1].position.x, path_to_be_exe[1].position.y, path_to_be_exe[1].position.z);
+
+        current_path_ = path_to_be_exe;
+        
+      } else {
+        ROS_WARN_THROTTLE(1, "Will not execute path");
+        ros::Duration(0.5).sleep();
+      }
+      search_iteration_++;
+    } else {
+      ROS_WARN("Planner service failed");
+      ros::Duration(0.5).sleep();
+    }
+  
+  if (search_srv.response.final_target_reached) {
+    target_reached_ = true;
+    ROS_WARN("REACHED FINAL TARGET");
+  }
+
+}
+
 }  // namespace explorer
 

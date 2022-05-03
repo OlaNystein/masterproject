@@ -44,42 +44,49 @@ void Graph::removeEdge(int u_id, int v_id) {
 bool Graph::findDijkstraShortestPaths(int src_id, ShortestPathsReport &rep) {
   rep.source_id = src_id;
   rep.status = false;
-
+  
   if (vertex_descriptors_.size() <= src_id) {
     std::cout << "Source index [" << src_id << "] is not in the graph." << std::endl;
     return false;
   }
-
+  ROS_INFO("g1");
   std::vector<VertexDescriptor> shortest_paths;
   std::vector<double> shortest_distances;
+  ROS_INFO("g2");
   if (findDijkstraShortestPaths(vertex_descriptors_[src_id], shortest_paths,
                                 shortest_distances)) {
+    ROS_INFO("g3");
     rep.status = true;
     rep.parent_id_map.clear();
     rep.distance_map.clear();
     int num_vertices = getNumVertices();
+    ROS_INFO("g4");
     for (int ind = 0; ind < num_vertices; ++ind) {
       rep.parent_id_map[ind] = getVertexID(shortest_paths[ind]);
       rep.distance_map[ind] = shortest_distances[ind];
     }
+    ROS_INFO("g5");
   }
-
+  ROS_INFO("g6");
   return rep.status;
 }
 
 bool Graph::findDijkstraShortestPaths(
     VertexDescriptor &source, std::vector<VertexDescriptor> &shortest_paths,
     std::vector<double> &shortest_distances) {
+  ROS_INFO("d1");
   num_vertices_ = boost::num_vertices(graph_);
+  int num_edges_ = boost::num_edges(graph_);
   if (num_vertices_ < 2) return false;
-
+  ROS_INFO("d2");
   shortest_paths.clear();
   shortest_distances.clear();
   shortest_paths.resize(num_vertices_);
   shortest_distances.resize(num_vertices_);
-
+  ROS_INFO("d3, numv: %d, nume: %d", num_vertices_, num_edges_);
   auto v_index = boost::get(boost::vertex_index, graph_);
   auto weight = boost::get(boost::edge_weight, graph_);
+  ROS_INFO("d4");
   boost::dijkstra_shortest_paths(
       graph_, source,
       boost::predecessor_map(
@@ -87,6 +94,7 @@ bool Graph::findDijkstraShortestPaths(
                                             get(boost::vertex_index, graph_)))
           .distance_map(boost::make_iterator_property_map(
               shortest_distances.begin(), get(boost::vertex_index, graph_))));
+  ROS_INFO("d5");
   return true;
 }
 

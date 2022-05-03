@@ -13,6 +13,8 @@ add_service_files(
   FILES
   velocity.srv
   build_tree.srv
+  search.srv
+  pci_search.srv
 )
 
 

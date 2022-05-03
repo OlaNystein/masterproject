@@ -2,14 +2,14 @@
   <arg name="mav_name" default="m100"/>
   <arg name="robot_name" default="$(arg mav_name)"/>
   <arg name="world_name" default="basic"/>
-  <arg name="enable_logging" default="false" />
+  <arg name="enable_logging" default="true" />
   <arg name="enable_ground_truth" default="true" />
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="debug" default="false"/>
   <arg name="rviz_en" default="true" />
   <arg name="gui" default="true"/>
-  <arg name="paused" default="true"/>
-  <arg name="launch_prefix" default=""/> <!-- gdb -ex run //args -->
+  <arg name="paused" default="false"/>
+  <arg name="launch_prefix" default=""/> <!-- gdb -ex run //args   gnome-terminal -x gdb-->
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
   <arg name="verbose" default="false"/>
@@ -19,6 +19,7 @@
   <arg name="pci_file" default="$(find rrtstar)/config/$(arg robot_name)/planner_control_interface_sim_config.yaml"/>
   <arg name="voxblox_config_file" default="$(find rrtstar)/config/$(arg robot_name)/voxblox_sim_config.yaml"/>
   <arg name="map_config_file" default="$(arg voxblox_config_file)"/>
+  <arg name="world_file" default="$(find planner_rts_sim)/worlds/pittsburgh_mine.world"/>
 
 
    <!-- Static TF -->
@@ -32,10 +33,10 @@
 
 
   <!-- ROS Gazebo  -->
-  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models"/>
-  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find rotors_gazebo)/models"/>
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find rotors_gazebo)/worlds/$(arg world_name).world" />
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find planner_rts_sim)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find planner_rts_sim)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch"> 
+    <arg name="world_name" value= "$(arg world_file)"/> <!--"$(find rotors_gazebo)/worlds/$(arg world_name).world"  -->
     <arg name="debug" value="$(arg debug)" />
     <arg name="paused" value="$(arg paused)" />
     <arg name="gui" value="$(arg gui)" />
@@ -88,5 +89,5 @@
   </node>
 
   
-  <node pkg="rviz" type="rviz" name="gbplanner_ui" output="screen" args="-d $(find rrtstar)/config/rviz/m100_sim.rviz"/>
+  <node pkg="rviz" type="rviz" name="rts_ui" output="screen" args="-d $(find rrtstar)/config/rviz/m100_sim.rviz"/>
 </launch>

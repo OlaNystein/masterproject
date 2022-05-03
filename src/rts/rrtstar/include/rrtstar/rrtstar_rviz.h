@@ -1,5 +1,5 @@
-#ifndef GBPLANNER_RVIZ_H_
-#define GBPLANNER_RVIZ_H_
+#ifndef RRTSTAR_RVIZ_H_
+#define RRTSTAR_RVIZ_H_
 
 #include <geometry_msgs/PolygonStamped.h>
 #include <pcl/point_cloud.h>
@@ -15,7 +15,7 @@
 #include "planner_common/geofence_manager.h"
 #include "planner_common/graph.h"
 #include "planner_common/graph_manager.h"
-#include "planner_common/map_manager.h"
+#include "planner_common/map_manager_voxblox_impl.h"
 #include "planner_common/params.h"
 #include "planner_common/random_sampler.h"
 #include "planner_common/trajectory.h"
@@ -71,6 +71,11 @@ class Visualization {
   void visualizeGeofence(
       const std::shared_ptr<GeofenceManager> geofence_manager);
 
+  void visualizeMap(
+    Eigen::Vector3d &bound_min, Eigen::Vector3d &bound_max,
+    std::vector<std::pair<Eigen::Vector3d, MapManager::VoxelStatus>> &voxels,
+    double voxel_size);
+
   void visualizePCL(const pcl::PointCloud<pcl::PointXYZ> *pcl);
   void visualizeCostMap(
       std::vector<std::pair<Eigen::Vector3d, double>> &free_voxels,
@@ -105,6 +110,7 @@ class Visualization {
   ros::Publisher planning_global_graph_pub_;
   ros::Publisher planning_homing_pub_;
   ros::Publisher planning_global_pub_;
+  ros::Publisher map_pub_;
 
   ros::Publisher hyperplanes_pub_;
 

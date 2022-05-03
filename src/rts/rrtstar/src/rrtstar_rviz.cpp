@@ -53,7 +53,125 @@ Visualization::Visualization(const ros::NodeHandle &nh,
       nh_.advertise<visualization_msgs::MarkerArray>("vis/cost_map", 10);
   path_pub_ =
       nh_.advertise<visualization_msgs::MarkerArray>("vis/alternate_path", 10);
+  map_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
+      "vis/map", 10);
+  
   best_path_id_ = 0;
+}
+
+void Visualization::visualizeMap(
+    Eigen::Vector3d &bound_min, Eigen::Vector3d &bound_max,
+    std::vector<std::pair<Eigen::Vector3d, MapManager::VoxelStatus>> &voxels,
+    double voxel_size) {
+
+
+  visualization_msgs::MarkerArray marker_array;
+
+  // Plot bounding area.
+  visualization_msgs::Marker bound_marker;
+  bound_marker.header.stamp = ros::Time::now();
+  bound_marker.header.seq = 0;
+  bound_marker.header.frame_id = world_frame_id;
+  bound_marker.id = 0;
+  bound_marker.ns = "bound";
+  bound_marker.action = visualization_msgs::Marker::ADD;
+  bound_marker.type = visualization_msgs::Marker::CUBE;
+  bound_marker.pose.position.x = 0.5 * (bound_min[0] + bound_max[0]);
+  bound_marker.pose.position.y = 0.5 * (bound_min[1] + bound_max[1]);
+  bound_marker.pose.position.z = 0.5 * (bound_min[2] + bound_max[2]);
+  bound_marker.scale.x = bound_max[0] - bound_min[0];
+  bound_marker.scale.y = bound_max[1] - bound_min[1];
+  bound_marker.scale.z = bound_max[2] - bound_min[2];
+  tf::Quaternion quat;
+  quat.setEuler(0, 0, 0);
+  bound_marker.pose.orientation.x = quat.x();
+  bound_marker.pose.orientation.y = quat.y();
+  bound_marker.pose.orientation.z = quat.z();
+  bound_marker.pose.orientation.w = quat.w();
+  bound_marker.color.r = 200.0 / 255.0;
+  bound_marker.color.g = 100.0 / 255.0;
+  bound_marker.color.b = 0.0;
+  bound_marker.color.a = 0.25;
+  bound_marker.lifetime = ros::Duration(ws_lifetime);
+  bound_marker.frame_locked = false;
+  marker_array.markers.push_back(bound_marker);
+
+  // Plot unknow voxels.
+  visualization_msgs::Marker unknown_voxel_marker;
+  unknown_voxel_marker.header.stamp = ros::Time::now();
+  unknown_voxel_marker.header.seq = 0;
+  unknown_voxel_marker.header.frame_id = world_frame_id;
+  unknown_voxel_marker.id = 0;
+  unknown_voxel_marker.ns = "unknown_voxels";
+  unknown_voxel_marker.action = visualization_msgs::Marker::ADD;
+  unknown_voxel_marker.type = visualization_msgs::Marker::CUBE_LIST;
+  unknown_voxel_marker.scale.x = voxel_size;
+  unknown_voxel_marker.scale.y = voxel_size;
+  unknown_voxel_marker.scale.z = voxel_size;
+  unknown_voxel_marker.color.r = 1.0;
+  unknown_voxel_marker.color.g = 0.0;
+  unknown_voxel_marker.color.b = 0.0;
+  unknown_voxel_marker.color.a = 0.8;
+  unknown_voxel_marker.lifetime = ros::Duration(graph_lifetime);
+  unknown_voxel_marker.frame_locked = false;
+
+  visualization_msgs::Marker free_voxel_marker;
+  free_voxel_marker.header.stamp = ros::Time::now();
+  free_voxel_marker.header.seq = 0;
+  free_voxel_marker.header.frame_id = world_frame_id;
+  free_voxel_marker.id = 0;
+  free_voxel_marker.ns = "free_voxels";
+  free_voxel_marker.action = visualization_msgs::Marker::ADD;
+  free_voxel_marker.type = visualization_msgs::Marker::CUBE_LIST;
+  free_voxel_marker.scale.x = voxel_size;
+  free_voxel_marker.scale.y = voxel_size;
+  free_voxel_marker.scale.z = voxel_size;
+  free_voxel_marker.color.r = 0.0;
+  free_voxel_marker.color.g = 1.0;
+  free_voxel_marker.color.b = 0.0;
+  free_voxel_marker.color.a = 0.8;
+  free_voxel_marker.lifetime = ros::Duration(graph_lifetime);
+  free_voxel_marker.frame_locked = false;
+
+  visualization_msgs::Marker occupied_voxel_marker;
+  occupied_voxel_marker.header.stamp = ros::Time::now();
+  occupied_voxel_marker.header.seq = 0;
+  occupied_voxel_marker.header.frame_id = world_frame_id;
+  occupied_voxel_marker.id = 0;
+  occupied_voxel_marker.ns = "occupied_voxels";
+  occupied_voxel_marker.action = visualization_msgs::Marker::ADD;
+  occupied_voxel_marker.type = visualization_msgs::Marker::CUBE_LIST;
+  occupied_voxel_marker.scale.x = voxel_size;
+  occupied_voxel_marker.scale.y = voxel_size;
+  occupied_voxel_marker.scale.z = voxel_size;
+  occupied_voxel_marker.color.r = 0.0;
+  occupied_voxel_marker.color.g = 0.0;
+  occupied_voxel_marker.color.b = 1.0;
+  occupied_voxel_marker.color.a = 0.4;
+  occupied_voxel_marker.lifetime = ros::Duration(graph_lifetime);
+  occupied_voxel_marker.frame_locked = false;
+
+  int num_voxels = voxels.size();
+  for (auto &v : voxels) {
+    geometry_msgs::Point p;
+    p.x = v.first[0];
+    p.y = v.first[1];
+    p.z = v.first[2];
+    if (v.second == MapManager::VoxelStatus::kUnknown) {
+      unknown_voxel_marker.points.push_back(p);
+    } else if (v.second == MapManager::VoxelStatus::kFree) {
+      free_voxel_marker.points.push_back(p);
+    } else if (v.second == MapManager::VoxelStatus::kOccupied) {
+      occupied_voxel_marker.points.push_back(p);
+    } else {
+      ROS_ERROR("Unsupported voxel type.");
+    }
+  }
+  marker_array.markers.push_back(unknown_voxel_marker);
+  marker_array.markers.push_back(free_voxel_marker);
+  marker_array.markers.push_back(occupied_voxel_marker);
+  
+  map_pub_.publish(marker_array);
 }
 
 void Visualization::visualizeWorkspace(StateVec &state, BoundedSpaceParams &local_ws){

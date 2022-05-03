@@ -18,7 +18,7 @@
 #include "planner_common/graph_manager.h"
 #include "planner_common/random_sampler.h"
 #include "planner_common/trajectory.h"
-#include "planner_common/map_manager.h"
+//#include "planner_common/map_manager.h"
 #include "planner_common/map_manager_voxblox_impl.h"
 #include "planner_common/params.h"
 
@@ -67,14 +67,15 @@ class Rrtstar {
   // Set the current robot's state (e.g. from odometry msg).
   void setState(StateVec& state);
 
+  bool getTargetStatus();
+
 
   // Build a tree
   TreeStatus buildTree();
 
-  ConnectStatus search(geometry_msgs::Pose source_pose,
-                        geometry_msgs::Pose target_pose,
-                        std::vector<geometry_msgs::Pose>& best_path);
+  
 
+  std::vector<geometry_msgs::Pose> runSearch(geometry_msgs::Pose target_pose);
   
 
  private:
@@ -116,13 +117,17 @@ class Rrtstar {
   // End of initial part of path.
   // When the robot is close to waypoint, planning 
   // for next segment stops and a new waypoint is calculated
-  Vertex* current_waypoint_; 
+  Vertex* current_waypoint_;
+  int current_waypoint_id_; 
 
   // Current state of the robot, updated from odometry.
   StateVec current_state_;
  
+  // Current leaf vertices of tree
+  std::vector<Vertex*> leaf_vertices_;
 
- 
+  // Is current final target reached
+  bool final_target_reached_;
 
   // Precompute params for planner.
   Eigen::Vector3d robot_box_size_;
@@ -135,9 +140,19 @@ class Rrtstar {
   // To visualize the feasible corridors in the path refinement step.
   std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> feasible_corridor_pcl_;
 
+  const double kFreePointCloudUpdatePeriod = 0.5;
+  ros::Timer free_pointcloud_update_timer_;
+  ros::Publisher free_cloud_pub_;
 
+  ros::Time rostime_start_;
 
   //-----------FUNCTIONS-----------------
+
+  bool search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep);
+
+  void rayCast(StateVec& state);
+
+  void freePointCloudtimerCallback(const ros::TimerEvent& event);
 
   bool sampleVertex(StateVec& state);
 

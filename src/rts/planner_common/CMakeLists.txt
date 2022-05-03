@@ -38,10 +38,10 @@ cs_add_library(${PROJECT_NAME}
   src/params.cpp
   src/trajectory.cpp
   src/random_sampler.cpp
-  src/octomap/map_manager_octomap_impl.cpp
-  src/voxblox/voxblox_common_impl.cpp
-  src/voxblox/voxblox_alt_impl.cpp
+  # src/voxblox/voxblox_common_impl.cpp
+  # src/voxblox/voxblox_alt_impl.cpp
   src/geofence_manager.cpp
+  src/map_manager_voxblox_impl.cpp
 )
 
 cs_install()

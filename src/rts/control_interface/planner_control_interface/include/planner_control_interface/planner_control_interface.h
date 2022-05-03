@@ -33,6 +33,9 @@
 #include "planner_msgs/planner_set_homing_pos.h"
 #include "planner_msgs/planner_srv.h"
 
+#include "rrtstar_msgs/search.h"
+#include "rrtstar_msgs/pci_search.h"
+
 namespace search {
 
 class PlannerControlInterface {
@@ -59,11 +62,14 @@ class PlannerControlInterface {
   ros::Subscriber odometry_sub_;
   ros::Subscriber pose_sub_;
   ros::Subscriber pose_stamped_sub_;
+  
+  ros::ServiceClient search_client_;
   ros::ServiceClient planner_client_;
   ros::ServiceClient planner_global_client_;
   ros::ServiceClient planner_geofence_client_;
   ros::ServiceClient planner_set_exp_mode_client_;
 
+  ros::ServiceServer pci_search_server_;
   ros::ServiceServer pci_server_;
   ros::ServiceServer pci_std_automatic_planning_server_;
   ros::ServiceServer pci_initialization_server_;
@@ -89,6 +95,7 @@ class PlannerControlInterface {
 
   geometry_msgs::Pose set_waypoint_;
   bool go_to_waypoint_request_;
+  bool search_request_;
 
   planner_msgs::pci_global::Request pci_global_request_params_;
   int frontier_id_;
@@ -106,6 +113,8 @@ class PlannerControlInterface {
   void poseStampedCallback(const geometry_msgs::PoseStamped &pose);
   void processPose(const geometry_msgs::Pose &pose);
 
+  bool searchCallback(rrtstar_msgs::pci_search::Request &req,
+                      rrtstar_msgs::pci_search::Response &res);
 
   bool triggerCallback(planner_msgs::pci_trigger::Request &req,
                        planner_msgs::pci_trigger::Response &res);
@@ -136,6 +145,13 @@ class PlannerControlInterface {
   geometry_msgs::Pose getPoseToStart();
 
   bool use_current_state_;
+  int search_iteration_;
+
+
+  geometry_msgs::Pose current_target_;
+  bool target_reached_;
+
+  void runSearch();
 
 };
 }  // namespace explorer

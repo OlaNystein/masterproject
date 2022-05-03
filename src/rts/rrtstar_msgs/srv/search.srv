@@ -1,0 +1,6 @@
+# search for best path to point
+geometry_msgs/Pose target
+-------------
+# return best path
+geometry_msgs/Pose[] path
+bool final_target_reached

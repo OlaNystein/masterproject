@@ -78,6 +78,18 @@ Rrtstar::Rrtstar(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): 
 
   odometry_ready = false;
 
+  rostime_start_ = ros::Time::now();
+
+  StateVec root_state;
+  root_state = current_state_;
+  root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
+
+    free_cloud_pub_ =
+      nh_.advertise<sensor_msgs::PointCloud2>("freespace_pointcloud", 10);
+
+  free_pointcloud_update_timer_ =
+      nh_.createTimer(ros::Duration(kFreePointCloudUpdatePeriod),
+                      &Rrtstar::freePointCloudtimerCallback, this);
 }
 
 void Rrtstar::reset(){
@@ -195,6 +207,7 @@ Rrtstar::TreeStatus Rrtstar::buildTree(){
 
     StateVec new_state;
     if (!sampleVertex(new_state)) {
+      ROS_WARN("Skipping invalid sample");
       continue; // skip invalid sample state
     }
 
@@ -211,9 +224,11 @@ Rrtstar::TreeStatus Rrtstar::buildTree(){
       break; // Early cutoff if no vertices are added (something very wrong)
     }
   }
+  
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops",
            num_vertices, num_edges, loop_count);
-
+  
+  tree_->findShortestPaths(tree_rep_);
   visualization_->visualizeSampler(random_sampler_);
   if (tree_->getNumVertices() > 1) {
     visualization_->visualizeGraph(tree_);
@@ -230,8 +245,11 @@ Rrtstar::TreeStatus Rrtstar::buildTree(){
 bool Rrtstar::sampleVertex(StateVec& state){
   bool found = false;
   int while_thres = 1000; // magic number
+ 
   while (!found && while_thres--) {
+
     random_sampler_.generate(root_vertex_->state, state);
+
     // Very fast check if the sampled point is inside the planning space.
     // This helps eliminate quickly points outside the sampling space.
     if (state.x() + robot_params_.center_offset.x() <
@@ -253,17 +271,25 @@ bool Rrtstar::sampleVertex(StateVec& state){
                global_space_params_.max_val.z() - 0.5 * robot_box_size_.z()) {
       continue;
     }
-
+    //ROS_INFO("State: x: %f, y: %f, z: %f", state[0], state[1], state[2]);
+    
     // Check if the voxel area is free
     if (map_manager_->getBoxStatus(Eigen::Vector3d(state[0], state[1], state[2])
        + robot_params_.center_offset, robot_box_size_, true) // True for stopping at unknown voxels
-         == MapManager::VoxelStatus::kFree)  {   
+         == MapManager::VoxelStatus::kFree)  {  
+      
       random_sampler_.pushSample(state, true);
       found = true;
+    
     } else {
+      
       random_sampler_.pushSample(state, false);
+      
       stat_->num_vertices_fail++;
+      
     }
+    
+
   }
   return found;
 }
@@ -282,7 +308,7 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
     return;
   }
   //-----------NEAREST-------------------------
-
+  
   //--------STEER------------------------------------
   // Find the edge length and checking its between max and min (tuning parameters)
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
@@ -324,6 +350,7 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
     std::vector<Vertex*> nearest_vertices;
     if (!tree_->getNearestVertices(&new_state, planning_params_.nearest_range, &nearest_vertices)) {
       rep.status = ExpandGraphStatus::kErrorKdTree;
+      ROS_WARN("Error with kdtree in expansion. ");
       return;
     }
 
@@ -402,29 +429,30 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
   rep.status = ExpandGraphStatus::kSuccess;
 }
 
-ConnectStatus Rrtstar::search(geometry_msgs::Pose source_pose,
-                      geometry_msgs::Pose target_pose, 
-                      std::vector<geometry_msgs::Pose>& best_path){
+bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep){
   // Converting poses
-  StateVec source;
+  StateVec source_state;
   convertPoseMsgToState(source_pose, source_state);
-  StateVec target;
+  StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
-
+  
   // Some initialization
   ConnectStatus search_result;
   best_path.clear();
-  tree_->reset();
+  //tree_->reset();
 
-  ROS_INFO("Starting to search for a path from src [%f,%f,%f] to tgt [%f,%f,%f]", source[0],
-           source[1], source[2], target[0], target[1], target[2]);
+  ROS_INFO("Starting to search for a path from src [%f,%f,%f] to tgt [%f,%f,%f]", source_state[0],
+           source_state[1], source_state[2], target_state[0], target_state[1], target_state[2]);
 
+  int num_vertices = treet->getNumVertices();
+
+  
   // Verify source is collision free
   MapManager::VoxelStatus voxel_state;
   voxel_state = map_manager_->getBoxStatus(Eigen::Vector3d(
-    source[0], source[1], source[2]) + robot_params_.center_offset,
+    source_state[0], source_state[1], source_state[2]) + robot_params_.center_offset,
     robot_box_size_, true);
-
+  
   if (voxel_state != MapManager::VoxelStatus::kFree) {
     switch (voxel_state) {
       case MapManager::VoxelStatus::kOccupied:
@@ -435,44 +463,302 @@ ConnectStatus Rrtstar::search(geometry_msgs::Pose source_pose,
         break;
     }
     search_result = ConnectStatus::kErrorCollisionAtSource;
-    return search_result;
+    //return search_result;
+    return false;
   }
-
+  
   // Initialize the tree with our unoccupied source
-  Vertex* source_vertex = new Vertex(tree_->generateVertexID(), source);
-  tree_->addVertex(source);
+  Vertex* source_vertex = new Vertex(treet->generateVertexID(), source_state);
+  treet->addVertex(source_vertex);
   root_vertex_ = source_vertex;
-    
+  
   // Sample points and add to tree
   bool target_reached = false;
   std::vector<Vertex*> target_neighbours;
-  int loop count = 0;
-  int num_vertices = 0;
+  int loop_count = 0;
+
   int num_edges = 0;
   random_sampler_.reset();
   bool stop_sampling = false;
-
+  int num_paths_to_target = 0;
+  ROS_INFO("1.1");
   while (!stop_sampling) {
     StateVec new_state;
+    
     if(!sampleVertex(new_state)) continue;
     ExpandGraphReport rep;
-    expandGraph(tree_, new_state, rep);
+    
+    expandTree(treet, new_state, rep);
+    
     if (rep.status == ExpandGraphStatus::kSuccess) {
       num_vertices += rep.num_vertices_added;
       num_edges += rep.num_edges_added;
       // Check if state is neighbour of target
-      Eigen::Vector3d radius_vec(new_state[0] - target[0],
-                                 new_state[1] - target[1]
-                                 new_state[2] - target[2]);
+      Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
+                                 new_state[1] - target_state[1],
+                                 new_state[2] - target_state[2]);
       if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
         target_neighbours.push_back(rep.vertex_added);
         target_reached = true;
         // We have reached the target without collision
-
+        num_paths_to_target++;
+        if (num_paths_to_target > random_sampling_params_->num_paths_to_target_max) {
+          stop_sampling = true;
+        }
       }
     }
-  }
+   
+    if ((loop_count >= random_sampling_params_->num_loops_cutoff) && (treet->getNumVertices() <= 1)) {
+      stop_sampling = true;
+    }
   
+    if ((loop_count++ > random_sampling_params_->num_loops_max) ||
+          (num_vertices > random_sampling_params_->num_vertices_max) ||
+          (num_edges > random_sampling_params_->num_edges_max)){
+      stop_sampling = true;
+    }
+  }
+  ROS_INFO("Expanded a tree with currently %d vertices and %d edges + nptt: %d", num_vertices, num_edges, num_paths_to_target);
+  visualization_->visualizeGraph(treet);
+  visualization_->visualizeSampler(random_sampler_);
+
+  // bool added_target = false;
+  // Vertex* target_vertex = NULL;
+  // if (target_reached) {
+  //   final_target_reached_ = true;
+  //   ROS_WARN("Reached target.");
+  //   voxel_state = map_manager_->getBoxStatus(Eigen::Vector3d(target_state[0], target_state[1], target_state[2]) + 
+  //                 robot_params_.center_offset,
+  //                 robot_box_size_, true);
+  //   if (voxel_state == MapManager::VoxelStatus::kFree) {
+  //     ExpandGraphReport rep;
+  //     expandTree(tree, target_state, rep);
+     
+  //     if (rep.status == ExpandGraphStatus::kSuccess) {
+  //       ROS_INFO("Added target to the graph successfully.");
+  //       num_vertices += rep.num_vertices_added;
+  //       num_edges += rep.num_edges_added;
+  //       added_target = true;
+  //       target_vertex = rep.vertex_added;
+  //     } else {
+  //       ROS_INFO("Cannot expand the graph to connect to the target.");
+  //     }
+  //   } else {
+  //     ROS_INFO("Target is not free, failed to add to graph. Only target neighbour is reachable");
+  //   }
+  // } else {
+  //   ROS_INFO ("Target not reached yet");
+  // }
+  ROS_INFO("h1");
+  tree_rep.reset();
+  ROS_INFO("h2");
+  treet->findShortestPaths(tree_rep);
+  
+  ROS_INFO("h3");
+  target_reached = true;
+  if (!target_reached) {
+    ROS_INFO("Finding best commited path to next waypoint");
+    double best_dist = 10000000;
+    // get leaf vertices of current tree (rewired)
+    treet->getLeafVertices(leaf_vertices_);
+    // find the leaf node with the lowest heuristic value
+    for (auto& leaf_vertice : leaf_vertices_) {
+      Eigen::Vector3d vec_to_target(target_state[0] - leaf_vertice->state[0],
+                            target_state[1]- leaf_vertice->state[1],
+                            target_state[2] - leaf_vertice->state[2]);
+      double norm_to_target = vec_to_target.norm();
+      double dist = leaf_vertice->distance + norm_to_target;
+      if (dist < best_dist){
+        current_waypoint_ = leaf_vertice;
+        // update next waypoint with the best vertex
+      }
+    }
+   } //else if (!added_target && target_reached){
+
+  //   ROS_INFO("Sorting best path to target neighbour. ");
+  //   std::sort(target_neighbours.begin(), target_neighbours.end(),
+  //             [&tree, &tree_rep](const Vertex* a, const Vertex* b) {
+  //               return tree->getShortestDistance(a->id, tree_rep) <
+  //                      tree->getShortestDistance(b->id, tree_rep);
+  //             });
+  //   ROS_INFO("h4");
+  //   current_waypoint_ = target_neighbours[0];
+  // }
+  ROS_INFO("h5");
+  std::vector<int> path_id_list;
+  treet->getShortestPath(current_waypoint_->id, tree_rep, false, path_id_list);
+  ROS_INFO("h6");
+  current_waypoint_id_ = current_waypoint_->id;
+
+  // convert each state in path to pose messages
+  while (!path_id_list.empty()) {
+    geometry_msgs::Pose pose;
+    int id = path_id_list.back();
+    path_id_list.pop_back();
+    convertStateToPoseMsg(treet->getVertex(id)->state, pose);
+    best_path.push_back(pose);
+  }
+
+  // Set the heading angle tangent with the moving direction,
+  // from the second waypoint; the first waypoint keeps the same direction.
+  if (planning_params_.yaw_tangent_correction) {
+    for (int i = 0; i < (best_path.size() - 1); ++i) {
+      Eigen::Vector3d vec(best_path[i + 1].position.x - best_path[i].position.x,
+                          best_path[i + 1].position.y - best_path[i].position.y,
+                          best_path[i + 1].position.z - best_path[i].position.z);
+      double yaw = std::atan2(vec[1], vec[0]);
+      tf::Quaternion quat;
+      quat.setEuler(0.0, 0.0, yaw);
+      best_path[i + 1].orientation.x = quat.x();
+      best_path[i + 1].orientation.y = quat.y();
+      best_path[i + 1].orientation.z = quat.z();
+      best_path[i + 1].orientation.w = quat.w();
+    }
+  }
+
+  ROS_WARN("Finish searching. ");
+  search_result = ConnectStatus::kSuccess;
+  visualization_->visualizeBestPaths(treet, tree_rep, 0, current_waypoint_id_);
+
+  return true;//search_result;
+}
+
+std::vector<geometry_msgs::Pose> Rrtstar::runSearch(geometry_msgs::Pose target_pose){
+  ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
+  ros::spinOnce();
+
+  std::vector<geometry_msgs::Pose> best_path;
+  geometry_msgs::Pose root_pose;
+
+  //std::shared_ptr<GraphManager> tree_search(new GraphManager());
+  tree_->reset();
+  stat_.reset(new SampleStatistic());
+  StateVec root_state;
+  root_state = current_state_;
+  root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
+  stat_->init(root_state);
+  
+  convertStateToPoseMsg(root_vertex_->state, root_pose);
+  ROS_WARN("Hello you have reached me");
+  bool stat = search(root_pose, target_pose, best_path, tree_, tree_rep_);
+  ROS_WARN("After search call");
+  if (stat == false){ //(stat == ConnectStatus::kErrorCollisionAtSource) {
+    ROS_WARN("Source obstructed when running search");
+    return best_path;
+  } else if (stat == false) {//ConnectStatus::kErrorNoFeasiblePath) {
+    ROS_WARN("Found no feasible path to execute");
+    return best_path;
+  }
+  ROS_INFO("Search successful, found next segment. ");
+  return best_path;
+}
+
+bool Rrtstar::getTargetStatus() {
+  return final_target_reached_;
+}
+
+void Rrtstar::freePointCloudtimerCallback(const ros::TimerEvent& event) {
+  
+  if (!planning_params_.freespace_cloud_enable) return;
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr free_cloud_body(
+      new pcl::PointCloud<pcl::PointXYZ>);
+
+  std::vector<Eigen::Vector3d> multiray_endpoints_body;
+  for (auto sensor_name : free_frustum_params_.sensor_list) {
+    StateVec state;
+    state[0] = current_state_[0];
+    state[1] = current_state_[1];
+    state[2] = current_state_[2];
+    state[3] = current_state_[3];
+    // get frustum endpoints (They are in world frame)
+    free_frustum_params_.sensor[sensor_name].getFrustumEndpoints(
+        state, multiray_endpoints_body);
+    std::vector<Eigen::Vector3d> multiray_endpoints;
+    // Check it the full ray till max range is free(for voxblox only, for
+    // octomap just convert to world frame)
+    map_manager_->getFreeSpacePointCloud(multiray_endpoints_body, state,
+                                         free_cloud_body);
+    // convert the endpoint to sensor frame
+    pcl::PointCloud<pcl::PointXYZ>::Ptr free_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    free_frustum_params_.sensor[sensor_name].convertBodyToSensor(
+        free_cloud_body, free_cloud);
+
+    sensor_msgs::PointCloud2 out_cloud;
+    pcl::toROSMsg(*free_cloud.get(), out_cloud);
+    out_cloud.header.frame_id =
+        free_frustum_params_.sensor[sensor_name].frame_id;
+    out_cloud.header.stamp = ros::Time::now();
+    free_cloud_pub_.publish(out_cloud);
+  }
+}
+
+void Rrtstar::rayCast(StateVec& state) {
+
+  // Get global bounds
+  Eigen::Vector3d bound_min;
+  Eigen::Vector3d bound_max;
+
+  if(global_space_params_.type == BoundedSpaceType::kCuboid) {
+    for (int i = 0; i < 3; i++) {
+      bound_min[i] = global_space_params_.min_val[i] +
+                     global_space_params_.min_extension[i];
+      bound_max[i] = global_space_params_.max_val[i] +
+                     global_space_params_.max_extension[i];
+    }
+  } else {
+    ROS_ERROR("Global space is sphere or undefined. ");
+    return;
+  }
+
+  std::vector<std::pair<Eigen::Vector3d, MapManager::VoxelStatus>> voxel_log;
+  int raw_unk_voxels_count = 0;
+  // refine bound inside sensor range
+  for (int ind = 0; ind < planning_params_.exp_sensor_list.size(); ind++){
+    std::string sensor_name = planning_params_.exp_sensor_list[ind];
+
+    for (int i = 0; i < 3; i++) {
+      bound_min[i] = std::max(bound_min[i], 
+                              state[i] - sensor_params_.sensor[sensor_name].max_range);
+      bound_max[i] = std::min(bound_max[i], 
+                              state[i] + sensor_params_.sensor[sensor_name].max_range);
+    }
+
+    Eigen::Vector3d origin(state[0], state[1], state[2]);
+    int num_unknown_voxels = 0, num_free_voxels = 0, num_occupied_voxels = 0;
+    std::vector<std::pair<Eigen::Vector3d, MapManager::VoxelStatus>>
+        voxel_log_tmp;
+    std::vector<Eigen::Vector3d> multiray_endpoints;
+
+    map_manager_->getScanStatus(origin, multiray_endpoints,
+                                voxel_log_tmp);
+    for (auto& vl : voxel_log_tmp) {
+      Eigen::Vector3d voxel = vl.first;
+      MapManager::VoxelStatus vs = vl.second;
+      if (vs == MapManager::VoxelStatus::kUnknown) ++raw_unk_voxels_count;
+      int j = 0;
+      for (j = 0; j < 3; j++) {
+        if ((voxel[j] < bound_min[j]) || (voxel[j] > bound_max[j])) break;
+      }
+      if (j == 3) {
+        // valid voxel.
+        if (vs == MapManager::VoxelStatus::kUnknown) {
+          ++num_unknown_voxels;
+        } else if (vs == MapManager::VoxelStatus::kFree) {
+          ++num_free_voxels;
+        } else if (vs == MapManager::VoxelStatus::kOccupied) {
+          ++num_occupied_voxels;
+        } else {
+          ROS_ERROR("Unsupported voxel type.");
+        }
+        voxel_log.push_back(std::make_pair(voxel, vs));
+      }
+    }
+    visualization_->visualizeRays(state, multiray_endpoints);
+    visualization_->visualizeMap(bound_min, bound_max, voxel_log,
+                                            map_manager_->getResolution());
+  }
 
 }
 

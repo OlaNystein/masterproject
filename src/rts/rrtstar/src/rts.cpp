@@ -14,7 +14,7 @@ RTS::RTS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     ros::shutdown();
   }
 
-  search_service_ = nh_.advertiseService("rts/search", &RTS::plannerSearchServiceCallback, this);
+  search_service_ = nh_.advertiseService("rts/search", &RTS::searchServiceCallback, this);
   build_tree_ = nh_.advertiseService("rts/buildtree", &RTS::buildTreeServiceCallback, this);
 
   pose_subscriber_ = nh_.subscribe("pose", 100, &RTS::poseCallback, this);
@@ -22,12 +22,27 @@ RTS::RTS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
       nh_.subscribe("pose_stamped", 100, &RTS::poseStampedCallback, this);
   odometry_subscriber_ =
       nh_.subscribe("odometry", 100, &RTS::odometryCallback, this);
+  
+ 
 
 }
 
-bool RTS::plannerSearchServiceCallback(planner_msgs::planner_search::Request& req,
-    planner_msgs::planner_search::Response& res){
+bool RTS::searchServiceCallback(rrtstar_msgs::search::Request& req,
+    rrtstar_msgs::search::Response& res){
   ROS_INFO("Search service callback reached");
+  res.path.clear();
+  if (getSearchStatus() == RTS::SearchStatus::NOT_READY) {
+    ROS_WARN("Search service not ready.");
+    return false;
+  }
+  ROS_WARN("Printing target before searchrun x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
+  res.path = rrtstar_->runSearch(req.target);
+  if (res.path.size() != 0 ) {
+    ROS_WARN("Printing first pose of path after searchrun x: %f, y: %f, z: %f. ", res.path[0].position.x, res.path[0].position.y, res.path[0].position.z);
+  } else {
+    ROS_WARN("No best path returned");
+  }
+  res.final_target_reached = rrtstar_->getTargetStatus();
   return true;
 }
 
