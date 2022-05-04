@@ -321,19 +321,19 @@ void PlannerControlInterface::processPose(const geometry_msgs::Pose &pose) {
 }
 
 void PlannerControlInterface::runSearch() {
-  ROS_INFO("Planning iteration %i", search_iteration_);
+  //ROS_INFO("Planning iteration %d", search_iteration_);
   rrtstar_msgs::search search_srv;
-  search_srv.request.target = current_target_;
+  search_srv.request.target_pose = current_target_;
 
     if (search_client_.call(search_srv)) {
-      if (!search_srv.response.path.empty()) {
+      if (!search_srv.response.best_path.empty()) {
         // Execute path
         ROS_INFO("Executing path. ");
         std::vector<geometry_msgs::Pose> path_to_be_exe;
-        pci_manager_->executePath(search_srv.response.path, path_to_be_exe,
+        pci_manager_->executePath(search_srv.response.best_path, path_to_be_exe,
                                   PCIManager::ExecutionPathType::kGlobalPath);
         
-        ROS_WARN("Printing first node in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[1].position.x, path_to_be_exe[1].position.y, path_to_be_exe[1].position.z);
+        ROS_WARN("Printing first pose in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
 
         current_path_ = path_to_be_exe;
         

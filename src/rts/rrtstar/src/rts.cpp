@@ -30,15 +30,15 @@ RTS::RTS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 bool RTS::searchServiceCallback(rrtstar_msgs::search::Request& req,
     rrtstar_msgs::search::Response& res){
   ROS_INFO("Search service callback reached");
-  res.path.clear();
+  res.best_path.clear();
   if (getSearchStatus() == RTS::SearchStatus::NOT_READY) {
     ROS_WARN("Search service not ready.");
     return false;
   }
-  ROS_WARN("Printing target before searchrun x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
-  res.path = rrtstar_->runSearch(req.target);
-  if (res.path.size() != 0 ) {
-    ROS_WARN("Printing first pose of path after searchrun x: %f, y: %f, z: %f. ", res.path[0].position.x, res.path[0].position.y, res.path[0].position.z);
+  ROS_WARN("Printing target before searchrun x: %f, y: %f, z: %f. ", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z);
+  res.best_path = rrtstar_->runSearch(req.target_pose);
+  if (res.best_path.size() != 0 ) {
+    //ROS_WARN("Printing first pose of path after searchrun x: %f, y: %f, z: %f. ", res.best_path[0].position.x, res.best_path[0].position.y, res.best_path[0].position.z);
   } else {
     ROS_WARN("No best path returned");
   }

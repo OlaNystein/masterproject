@@ -4,70 +4,6 @@ namespace search {
 namespace rrtstar{
 
 
-RobotStateHistory::RobotStateHistory() {
-  kd_tree_ = NULL;
-  reset();
-}
-
-void RobotStateHistory::reset() {
-  if (kd_tree_) kd_free(kd_tree_);
-  kd_tree_ = kd_create(3);
-}
-
-void RobotStateHistory::addState(StateVec* s){
-  kd_insert3(kd_tree_, s->x(), s->y(), s->z(), s);
-  state_hist_.push_back(s);
-}
-
-bool RobotStateHistory::getNearestState(const StateVec* state, StateVec** s_res) {
-  if (state_hist_.size() == 0) return false;
-  kdres* nearest = kd_nearest3(kd_tree_, state->x(), state->y(), state->z());
-  if (kd_res_size(nearest) <= 0) {
-      kd_res_free(nearest);
-      return false;  
-  }
-  *s_res = (StateVec*)kd_res_item_data(nearest);
-  kd_res_free(nearest);
-  return true;
-}
-
-bool RobotStateHistory::getNearestStates(const StateVec* state, double range,
-                                         std::vector<StateVec*>* s_res) {
-  // Notice that this might include the same vertex in the result.
-  // if that vertex is added to the tree before.
-  // Use the distance 0 or small threshold to filter out.
-  if (state_hist_.size() == 0) return false;
-  kdres* neighbors = kd_nearest_range3(kd_tree_, 
-      state->x(), state->y(), state->z(), range); // Visualize volumetric gain.
-  int neighbors_size = kd_res_size(neighbors);
-  if (neighbors_size <= 0) return false;
-  s_res->clear();
-  for (int i = 0; i < neighbors_size; ++i) {
-    StateVec* new_neighbor = (StateVec*)kd_res_item_data(neighbors);
-    s_res->push_back(new_neighbor);
-    if (kd_res_next(neighbors) <= 0) break;
-  }
-  kd_res_free(neighbors);
-  return true;
-}
-
-bool RobotStateHistory::getNearestStateInRange(const StateVec* state,
-                                               double range, StateVec** s_res) {
-  if (state_hist_.size() == 0) return false;
-  kdres* nearest = kd_nearest3(kd_tree_, state->x(), state->y(), state->z());
-  if (kd_res_size(nearest) <= 0) {
-    kd_res_free(nearest);
-    return false;
-  }
-  *s_res = (StateVec*)kd_res_item_data(nearest);
-  Eigen::Vector3d dist;
-  dist << state->x() - (*s_res)->x(), state->y() - (*s_res)->y(),
-      state->z() - (*s_res)->z();
-  kd_res_free(nearest);
-  if (dist.norm() > range) return false;
-  return true;
-}
-
 Rrtstar::Rrtstar(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
   map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
     nh_, nh_private_);
@@ -78,13 +14,15 @@ Rrtstar::Rrtstar(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): 
 
   odometry_ready = false;
 
+  current_search_iteration_ = 0;
+
   rostime_start_ = ros::Time::now();
 
   StateVec root_state;
   root_state = current_state_;
   root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
 
-    free_cloud_pub_ =
+  free_cloud_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("freespace_pointcloud", 10);
 
   free_pointcloud_update_timer_ =
@@ -104,7 +42,7 @@ void Rrtstar::reset(){
   StateVec root_state;
   root_state = current_state_;
   stat_->init(root_state);
-
+  current_search_iteration_ = 0;
   // Create a root vertex and add to the graph.
   // Root vertex should be assigned id 0.
   root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
@@ -226,7 +164,7 @@ Rrtstar::TreeStatus Rrtstar::buildTree(){
   }
   
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops",
-           num_vertices, num_edges, loop_count);
+           tree_->getNumVertices(), num_edges, loop_count);
   
   tree_->findShortestPaths(tree_rep_);
   visualization_->visualizeSampler(random_sampler_);
@@ -241,6 +179,141 @@ Rrtstar::TreeStatus Rrtstar::buildTree(){
   }
 }
 
+Rrtstar::TreeStatus Rrtstar::buildTree(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
+  int loop_count(0);
+  int num_vertices(1);
+  int num_edges(0);
+  
+  current_search_iteration_++;
+  if(!(current_search_iteration_ == 1)) {
+    root_vertex_ = current_waypoint_;
+  }
+  ROS_INFO("csi: %d", current_search_iteration_);
+  bool target_reached = false;
+  std::vector<Vertex*> target_neighbours;
+  int num_paths_to_target = 0;
+  bool stop_sampling = false;
+  StateVec target_state;
+  convertPoseMsgToState(target_pose, target_state);
+
+  while ((loop_count++ < current_search_iteration_*(planning_params_.num_loops_max)) &&
+  (num_vertices < current_search_iteration_*(planning_num_vertices_max_)) &&
+  (num_edges < current_search_iteration_*(planning_num_edges_max_)) && (!stop_sampling)) {
+
+    StateVec new_state;
+    if (!sampleVertex(new_state)) {
+      ROS_WARN("Skipping invalid sample");
+      continue; // skip invalid sample state
+    }
+
+    ExpandGraphReport rep;
+    expandTree(tree_, new_state, rep);
+
+    if (rep.status == ExpandGraphStatus::kSuccess) {
+      num_vertices += rep.num_vertices_added; // Always one in tree
+      num_edges += rep.num_edges_added; // Always one in tree
+      // Check if state is neighbour of target
+      Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
+                                 new_state[1] - target_state[1],
+                                 new_state[2] - target_state[2]);
+      if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
+        target_neighbours.push_back(rep.vertex_added);
+        target_reached = true;
+        final_target_reached_ = true;
+        // We have reached the target without collision
+        num_paths_to_target++;
+        if (num_paths_to_target > random_sampling_params_->num_paths_to_target_max) {
+          stop_sampling = true;
+        }
+      }
+    }
+
+    if ((loop_count >= planning_params_.num_loops_cutoff) &&
+        (tree_->getNumVertices() <= 1)) {
+      break; // Early cutoff if no vertices are added (something very wrong)
+    }
+  }
+  
+  ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, nptt[%d]",
+           tree_->getNumVertices(), tree_->getNumEdges(), loop_count, num_paths_to_target);
+  if (current_search_iteration_ == 1) {
+    tree_->findShortestPaths(tree_rep_);// from initial root
+  } else {
+    tree_->findShortestPaths(current_waypoint_->id, tree_rep_);
+    root_vertex_ = current_waypoint_;
+  }
+  
+  tree_->findLeafVertices(tree_rep_);
+
+  
+  if (!target_reached) {
+    ROS_INFO("Finding best commited path to next waypoint");
+    double best_dist = 10000000;
+    // get leaf vertices of current tree (rewired)
+    tree_->getLeafVertices(leaf_vertices_);
+    // find the leaf node with the lowest heuristic value
+    int num_leaf = 0;
+    for (auto& leaf_vertice : leaf_vertices_) {
+      Eigen::Vector3d vec_to_target(target_state[0] - leaf_vertice->state[0],
+                            target_state[1]- leaf_vertice->state[1],
+                            target_state[2] - leaf_vertice->state[2]);
+      double norm_to_target = vec_to_target.norm();
+      double dist = leaf_vertice->distance + norm_to_target;
+      num_leaf++;
+      if (dist < best_dist){
+        current_waypoint_ = leaf_vertice;
+        // update next waypoint with the best vertex
+      }
+    }
+    ROS_INFO("Num leafs: %d", num_leaf);
+   } else {
+     current_waypoint_ = target_neighbours[0];
+   }
+  
+  ROS_INFO("2, dwid: %d", current_waypoint_->id);
+  std::vector<int> path_id_list;
+  tree_->getShortestPath(current_waypoint_->id, tree_rep_, false, path_id_list);
+
+  ROS_INFO("Printing current waypoint: x: %f, y: %f z: %f", current_waypoint_->state.x(), current_waypoint_->state.y(), current_waypoint_->state.z());
+
+  while (!path_id_list.empty()) {
+    geometry_msgs::Pose pose;
+    int id = path_id_list.back();
+    path_id_list.pop_back();
+    convertStateToPoseMsg(tree_->getVertex(id)->state, pose);
+    best_path.push_back(pose);
+  }
+
+  if (planning_params_.yaw_tangent_correction) {
+    for (int i = 0; i < (best_path.size() - 1); ++i) {
+      Eigen::Vector3d vec(best_path[i + 1].position.x - best_path[i].position.x,
+                          best_path[i + 1].position.y - best_path[i].position.y,
+                          best_path[i + 1].position.z - best_path[i].position.z);
+      double yaw = std::atan2(vec[1], vec[0]);
+      tf::Quaternion quat;
+      quat.setEuler(0.0, 0.0, yaw);
+      best_path[i + 1].orientation.x = quat.x();
+      best_path[i + 1].orientation.y = quat.y();
+      best_path[i + 1].orientation.z = quat.z();
+      best_path[i + 1].orientation.w = quat.w();
+    }
+  }
+
+  visualization_->visualizeSampler(random_sampler_);
+  visualization_->visualizeBestPaths(tree_, tree_rep_, 0, current_waypoint_->id);
+  if (final_target_reached_) {
+    current_search_iteration_ = 0;
+  }
+  if (tree_->getNumVertices() > 1) {
+    visualization_->visualizeGraph(tree_);
+    return Rrtstar::TreeStatus::OK;
+  } else {
+    visualization_->visualizeFailedEdges(stat_);
+    ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
+            stat_->num_vertices_fail, stat_->num_edges_fail);
+    return Rrtstar::TreeStatus::ERR_NO_FEASIBLE_PATH;
+  }
+}
 
 bool Rrtstar::sampleVertex(StateVec& state){
   bool found = false;
@@ -350,7 +423,7 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
     std::vector<Vertex*> nearest_vertices;
     if (!tree_->getNearestVertices(&new_state, planning_params_.nearest_range, &nearest_vertices)) {
       rep.status = ExpandGraphStatus::kErrorKdTree;
-      ROS_WARN("Error with kdtree in expansion. ");
+      //ROS_WARN("Error with kdtree in expansion. ");
       return;
     }
 
@@ -396,6 +469,7 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
     rep.num_vertices_added++;
     tree_->addEdge(new_vertex, v_min, c_min - v_min->distance);
     rep.num_edges_added++;
+    rep.vertex_added = new_vertex;
 
 
     // Rewire the tree if the new found vertex yields shorter path to near vertex
@@ -429,10 +503,10 @@ void Rrtstar::expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state
   rep.status = ExpandGraphStatus::kSuccess;
 }
 
-bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep){
+bool Rrtstar::search(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep){
   // Converting poses
-  StateVec source_state;
-  convertPoseMsgToState(source_pose, source_state);
+  StateVec source_state = root_vertex_->state;
+
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
   
@@ -445,7 +519,7 @@ bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& targ
            source_state[1], source_state[2], target_state[0], target_state[1], target_state[2]);
 
   int num_vertices = treet->getNumVertices();
-
+  
   
   // Verify source is collision free
   MapManager::VoxelStatus voxel_state;
@@ -521,6 +595,7 @@ bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& targ
   ROS_INFO("Expanded a tree with currently %d vertices and %d edges + nptt: %d", num_vertices, num_edges, num_paths_to_target);
   visualization_->visualizeGraph(treet);
   visualization_->visualizeSampler(random_sampler_);
+  ROS_INFO("v: %d", treet->getNumVertices());
 
   // bool added_target = false;
   // Vertex* target_vertex = NULL;
@@ -587,7 +662,7 @@ bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& targ
   ROS_INFO("h5");
   std::vector<int> path_id_list;
   treet->getShortestPath(current_waypoint_->id, tree_rep, false, path_id_list);
-  ROS_INFO("h6");
+  
   current_waypoint_id_ = current_waypoint_->id;
 
   // convert each state in path to pose messages
@@ -615,6 +690,7 @@ bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& targ
       best_path[i + 1].orientation.w = quat.w();
     }
   }
+  
 
   ROS_WARN("Finish searching. ");
   search_result = ConnectStatus::kSuccess;
@@ -623,29 +699,31 @@ bool Rrtstar::search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& targ
   return true;//search_result;
 }
 
-std::vector<geometry_msgs::Pose> Rrtstar::runSearch(geometry_msgs::Pose target_pose){
+std::vector<geometry_msgs::Pose> Rrtstar::runSearch(geometry_msgs::Pose& target_pose){
   ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
   ros::spinOnce();
 
   std::vector<geometry_msgs::Pose> best_path;
-  geometry_msgs::Pose root_pose;
-
-  //std::shared_ptr<GraphManager> tree_search(new GraphManager());
-  tree_->reset();
-  stat_.reset(new SampleStatistic());
-  StateVec root_state;
-  root_state = current_state_;
-  root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
-  stat_->init(root_state);
   
-  convertStateToPoseMsg(root_vertex_->state, root_pose);
+  final_target_reached_ = false;
+  if (current_search_iteration_ == 0){
+    tree_->reset();
+    tree_rep_.reset();
+    stat_.reset(new SampleStatistic());
+    StateVec root_state;
+    root_state = current_state_;
+    root_vertex_ = new Vertex(tree_->generateVertexID(), root_state);
+    stat_->init(root_state);
+    tree_->addVertex(root_vertex_);
+    ROS_INFO("Source vertex id: %d, v: %d", root_vertex_->id, tree_->getNumVertices());
+  }
   ROS_WARN("Hello you have reached me");
-  bool stat = search(root_pose, target_pose, best_path, tree_, tree_rep_);
+  TreeStatus stat = buildTree(target_pose, best_path);
   ROS_WARN("After search call");
-  if (stat == false){ //(stat == ConnectStatus::kErrorCollisionAtSource) {
+  if (stat == TreeStatus::NOT_OK){ //(stat == ConnectStatus::kErrorCollisionAtSource) {
     ROS_WARN("Source obstructed when running search");
     return best_path;
-  } else if (stat == false) {//ConnectStatus::kErrorNoFeasiblePath) {
+  } else if (stat == TreeStatus::ERR_NO_FEASIBLE_PATH) {//ConnectStatus::kErrorNoFeasiblePath) {
     ROS_WARN("Found no feasible path to execute");
     return best_path;
   }

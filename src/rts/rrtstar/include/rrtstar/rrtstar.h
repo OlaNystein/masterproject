@@ -8,10 +8,12 @@
 
 #include <geometry_msgs/Polygon.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/Pose.h>
 
 #include "kdtree/kdtree.h"
 
 #include "rrtstar/rrtstar_rviz.h"
+#include "rrtstar_msgs/search.h"
 
 #include "planner_common/graph_base.h"
 #include "planner_common/graph.h"
@@ -27,22 +29,7 @@ namespace search{
 namespace rrtstar{
     
 
-class RobotStateHistory {
- public:
-  RobotStateHistory();
-  void addState(StateVec* s);
-  bool getNearestState(const StateVec* state, StateVec** s_res);
-  bool getNearestStateInRange(const StateVec* state, double range,
-                              StateVec** s_res);
-  bool getNearestStates(const StateVec* state, double range,
-                        std::vector<StateVec*>* s_res);
-  void reset();
-  std::vector<StateVec*> state_hist_;
 
- private:
-  // Kd-tree for nearest neigbor lookup.
-  kdtree* kd_tree_;
-};
 
 class Rrtstar {
  public:
@@ -72,10 +59,11 @@ class Rrtstar {
 
   // Build a tree
   TreeStatus buildTree();
-
+  TreeStatus buildTree(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
+  
   
 
-  std::vector<geometry_msgs::Pose> runSearch(geometry_msgs::Pose target_pose);
+  std::vector<geometry_msgs::Pose> runSearch(geometry_msgs::Pose& target_pose);
   
 
  private:
@@ -122,6 +110,8 @@ class Rrtstar {
 
   // Current state of the robot, updated from odometry.
   StateVec current_state_;
+
+  int current_search_iteration_;
  
   // Current leaf vertices of tree
   std::vector<Vertex*> leaf_vertices_;
@@ -148,7 +138,7 @@ class Rrtstar {
 
   //-----------FUNCTIONS-----------------
 
-  bool search(geometry_msgs::Pose& source_pose, geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep);
+  bool search(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path, std::shared_ptr<GraphManager> treet, ShortestPathsReport& tree_rep);
 
   void rayCast(StateVec& state);
 
@@ -157,6 +147,8 @@ class Rrtstar {
   bool sampleVertex(StateVec& state);
 
   void expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state, ExpandGraphReport& rep);//TODO
+
+  void fuckoff(std::shared_ptr<GraphManager> kl);
 
   void convertStateToPoseMsg(const StateVec& state, geometry_msgs::Pose& pose) {
     pose.position.x = state[0];
