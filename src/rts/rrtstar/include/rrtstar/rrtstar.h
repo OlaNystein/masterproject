@@ -38,6 +38,7 @@ class Rrtstar {
     ERR_KDTREE,           // Could not get nearest neighbours from kdtree
     ERR_NO_FEASIBLE_PATH, // Could not find feasible path
     NOT_OK,               // Other error
+    STUCK,
   };
 
   Rrtstar(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
@@ -55,6 +56,8 @@ class Rrtstar {
   void setState(StateVec& state);
 
   bool getTargetStatus();
+
+  bool getStuckStatus();
 
 
   // Build a tree
@@ -74,6 +77,8 @@ class Rrtstar {
 
   // Tree used for searching
   std::shared_ptr<GraphManager> tree_;
+  // Old tree used for TODO:
+  std::shared_ptr<GraphManager> tree_old_;
   // Shortest path report from last search
   ShortestPathsReport tree_rep_;
   // Vizualisation in rviz
@@ -102,6 +107,7 @@ class Rrtstar {
   Vertex* root_vertex_; //Root vertex for iterative planning
   Vertex* best_vertex_;
 
+  bool stuck_;
   // End of initial part of path.
   // When the robot is close to waypoint, planning 
   // for next segment stops and a new waypoint is calculated
@@ -135,6 +141,14 @@ class Rrtstar {
   ros::Publisher free_cloud_pub_;
 
   ros::Time rostime_start_;
+  
+  ros::Time btime; //temporary build timer
+  ros::Time ftime; //temporary find timer
+
+  double total_distance_;
+  double total_time_;
+  double avg_graph_build_time_;
+  double avg_waypoint_finder_time_;
 
   //-----------FUNCTIONS-----------------
 
@@ -148,7 +162,13 @@ class Rrtstar {
 
   void expandTree(std::shared_ptr<GraphManager> tree, StateVec& new_state, ExpandGraphReport& rep);//TODO
 
-  void fuckoff(std::shared_ptr<GraphManager> kl);
+  bool buildTreeFromNewRoot(Vertex* root);
+
+  void expandTreeEdges(std::shared_ptr<GraphManager> tree, Vertex* new_vertex, ExpandGraphReport& rep);
+
+  double getEuclidean(Vertex* v, Vertex* u);
+
+  
 
   void convertStateToPoseMsg(const StateVec& state, geometry_msgs::Pose& pose) {
     pose.position.x = state[0];

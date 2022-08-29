@@ -20,7 +20,6 @@ PlannerControlInterface::PlannerControlInterface(
       nh_.subscribe("pose", 1, &PlannerControlInterface::poseCallback, this);
   pose_stamped_sub_ = nh_.subscribe(
       "pose_stamped", 1, &PlannerControlInterface::poseStampedCallback, this);
-
   // Services and several standard services accompanied for easier trigger.
   pci_server_ =
       nh_.advertiseService("planner_control_interface_trigger",
@@ -35,6 +34,7 @@ PlannerControlInterface::PlannerControlInterface(
 
   search_client_ = nh_.serviceClient<rrtstar_msgs::search>("rts/search");
 
+
   while (!(search_client_ = nh.serviceClient<rrtstar_msgs::search>(
                "rts/search", true))) {  // true for persistent
     ROS_WARN("PCI: service search_server is not available: waiting...");
@@ -42,7 +42,7 @@ PlannerControlInterface::PlannerControlInterface(
   }
   ROS_INFO("PCI: connected to service search_server.");
   
-
+  total_time_ = 0;
   
   pci_to_waypoint_server_ = nh_.advertiseService(
       "pci_to_waypoint", &PlannerControlInterface::goToWaypointCallback, this);
@@ -66,6 +66,8 @@ PlannerControlInterface::PlannerControlInterface(
 bool PlannerControlInterface::searchCallback(rrtstar_msgs::pci_search::Request &req,
                       rrtstar_msgs::pci_search::Response &res) {
   search_request_ = true;
+  target_reached_ = false;
+  
   ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
 
   current_target_ = req.target;
@@ -324,21 +326,48 @@ void PlannerControlInterface::runSearch() {
   //ROS_INFO("Planning iteration %d", search_iteration_);
   rrtstar_msgs::search search_srv;
   search_srv.request.target_pose = current_target_;
+  
+  START_TIMER(ttime);
+  
 
     if (search_client_.call(search_srv)) {
       if (!search_srv.response.best_path.empty()) {
         // Execute path
+        if (search_srv.response.stuck) {
+          search_iteration_ = 0;
+          search_request_ = false;
+          target_reached_ = false;
+          ROS_INFO("Planner aborted - give new target");
+          return;
+        }
         ROS_INFO("Executing path. ");
         std::vector<geometry_msgs::Pose> path_to_be_exe;
         pci_manager_->executePath(search_srv.response.best_path, path_to_be_exe,
                                   PCIManager::ExecutionPathType::kGlobalPath);
         
+        int wp_pos_id = path_to_be_exe.size()-1;
         ROS_WARN("Printing first pose in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
-
+        ROS_WARN("Printing last pose in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
         current_path_ = path_to_be_exe;
+
+        // bool reached_waypoint = false;
+        
+        // // Wait till commited path is somewhat executed before continuing.
+        // while (!reached_waypoint){
+        //   Eigen::Vector3d current_pos = Eigen::Vector3d(current_pose_.position.x, current_pose_.position.y, current_pose_.position.z);
+        //   Eigen::Vector3d wp_pos = Eigen::Vector3d(path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
+        //   double current_pos_norm = current_pos.norm();
+        //   double wp_pos_norm = wp_pos.norm();
+        //   ROS_INFO("Current distance to wp is %f ", abs(current_pos_norm - wp_pos_norm));
+        //   if (abs(current_pos_norm - wp_pos_norm) < 2) { //magic number
+        //     reached_waypoint = true;
+        //   }
+        //   ros::Duration(0.5).sleep();
+        // }
         
       } else {
-        ROS_WARN_THROTTLE(1, "Will not execute path");
+        ROS_WARN("Will not execute path");
+        
         ros::Duration(0.5).sleep();
       }
       search_iteration_++;
@@ -349,10 +378,14 @@ void PlannerControlInterface::runSearch() {
   
   if (search_srv.response.final_target_reached) {
     target_reached_ = true;
-    ROS_WARN("REACHED FINAL TARGET");
+    total_time_ = GET_ELAPSED_TIME(ttime);
+    ROS_WARN("REACHED FINAL TARGET, total time: %f", total_time_);
   }
 
 }
+
+
+
 
 }  // namespace explorer
 

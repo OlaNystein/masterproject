@@ -38,6 +38,12 @@
 
 namespace search {
 
+// Macro for timing: notice that, have to use sequentially;
+// otherwise, use different variables
+typedef ros::Time TIMER;
+#define START_TIMER(x) (x = ros::Time::now())
+#define GET_ELAPSED_TIME(x) (float)((ros::Time::now() - x).toSec())
+
 class PlannerControlInterface {
  public:
   enum struct RobotModeType { kAerialRobot = 0, kLeggedRobot };
@@ -63,11 +69,13 @@ class PlannerControlInterface {
   ros::Subscriber pose_sub_;
   ros::Subscriber pose_stamped_sub_;
   
+  
   ros::ServiceClient search_client_;
   ros::ServiceClient planner_client_;
   ros::ServiceClient planner_global_client_;
   ros::ServiceClient planner_geofence_client_;
   ros::ServiceClient planner_set_exp_mode_client_;
+  
 
   ros::ServiceServer pci_search_server_;
   ros::ServiceServer pci_server_;
@@ -134,6 +142,8 @@ class PlannerControlInterface {
   bool rotate180DegCallback(std_srvs::Trigger::Request &req,
                             std_srvs::Trigger::Response &res);
 
+  
+ 
 
   void resetPlanner();
 
@@ -151,6 +161,8 @@ class PlannerControlInterface {
   geometry_msgs::Pose current_target_;
   bool target_reached_;
 
+  ros::Time ttime;
+  double total_time_;
   void runSearch();
 
 };

@@ -15,6 +15,7 @@
 
 #include "rrtstar_msgs/build_tree.h"
 #include "rrtstar_msgs/search.h"
+#include "rrtstar_msgs/pci_search.h"
 
 
 namespace search {
@@ -34,6 +35,9 @@ class RTS {
   ros::Subscriber pose_subscriber_;
   ros::Subscriber pose_stamped_subscriber_;
   ros::Subscriber odometry_subscriber_;
+  ros::Subscriber click_subscriber_;
+
+  ros::ServiceClient pci_click_client_;
 
   SearchStatus search_status_;
   SearchState search_state_;
@@ -48,6 +52,7 @@ class RTS {
     rrtstar_msgs::build_tree::Request& req,
     rrtstar_msgs::build_tree::Response& res);
 
+  void clickCallback(const geometry_msgs::PointStamped &pt);
 
   void poseCallback(const geometry_msgs::PoseWithCovarianceStamped& pose);
   void poseStampedCallback(const geometry_msgs::PoseStamped& pose);

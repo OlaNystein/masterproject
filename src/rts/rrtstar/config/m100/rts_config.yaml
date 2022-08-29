@@ -12,8 +12,8 @@ RobotParams:
   size_extension:     [0.4, 0.4, 0.4]
   center_offset:      [0.0, 0.0, 0.0]
   relax_ratio:        0.5
-  bound_mode:         kExtendedBound
-  safety_extension:  [2.0, 2.0, 1.0]
+  bound_mode:         kExactBound
+  safety_extension:  [1.3, 1.3, 0.8]
 #-------------------------------------------------------------------------------
 # SENSOR CONFIGURATION
 #  sensor_list: Define a set of sensors relevant to the exploration task.
@@ -96,16 +96,16 @@ PlanningParams:
   bound_mode:       kExtremeBound
   exp_sensor_list:  ["VLP16"]
   yaw_tangent_correction: true
-  edge_length_min:  0.2
-  edge_length_max:  5.0
+  edge_length_min:  0.3
+  edge_length_max:  6
   edge_overshoot:   0.0
-  num_vertices_max: 300
+  num_vertices_max: 200
   num_edges_max:    3000
-  num_loops_cutoff: 2000
-  num_loops_max:    20000
-  nearest_range:    3.0
-  nearest_range_min: 0.35 # >= edge_length_min
-  nearest_range_max: 5.0 # <= edge_length_max
+  num_loops_cutoff: 1000
+  num_loops_max:    10000
+  nearest_range:    5.0
+  nearest_range_min: 0.5 # >= edge_length_min
+  nearest_range_max: 5.5 # <= edge_length_max
   use_current_state: true
   use_ray_model_for_volumetric_gain: true
   path_length_penalty: 0.02

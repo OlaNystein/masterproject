@@ -22,8 +22,9 @@ RTS::RTS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
       nh_.subscribe("pose_stamped", 100, &RTS::poseStampedCallback, this);
   odometry_subscriber_ =
       nh_.subscribe("odometry", 100, &RTS::odometryCallback, this);
-  
- 
+  click_subscriber_ = nh_.subscribe("clicked_point", 1, &RTS::clickCallback, this);
+  pci_click_client_ = nh_.serviceClient<rrtstar_msgs::pci_search>("pci_search");
+
 
 }
 
@@ -43,6 +44,7 @@ bool RTS::searchServiceCallback(rrtstar_msgs::search::Request& req,
     ROS_WARN("No best path returned");
   }
   res.final_target_reached = rrtstar_->getTargetStatus();
+  res.stuck = rrtstar_->getStuckStatus();
   return true;
 }
 
@@ -98,6 +100,30 @@ RTS::SearchStatus RTS::getSearchStatus(){
     return RTS::SearchStatus::READY;
   }
   return RTS::SearchStatus::READY;
+}
+
+void RTS::clickCallback(const geometry_msgs::PointStamped &pt) {
+  ROS_INFO("You clicked, %f, %f", pt.point.x, pt.point.y);
+  geometry_msgs::Pose tg;
+  tg.position.x = pt.point.x;
+  tg.position.y = pt.point.y;
+  tg.position.z = 2.0;
+ 
+  tg.orientation.x = 0;
+  tg.orientation.y = 0;
+  tg.orientation.z = 0;
+  tg.orientation.w = 1;
+ 
+  rrtstar_msgs::pci_search p;
+
+  p.request.target = tg;
+  ROS_INFO("%f, %f", p.request.target.position.x, p.request.target.position.y);
+  
+  if(pci_click_client_.call(p)){
+    ROS_INFO("Successclick!");
+  } else {
+    ROS_INFO("failclick");
+  }
 }
 
 
