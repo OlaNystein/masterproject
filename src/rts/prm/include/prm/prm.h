@@ -37,6 +37,47 @@ class Prm {
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
+  std::shared_ptr<GraphManager> roadmap_graph_;
+
+  ShortestPathsReport roadmap_graph_rep_;
+
+  Visualization* visualization_;
+
+  // Parameters required for planning
+  SensorParams sensor_params_; // should be a list if different robots
+  SensorParams free_frustum_params_;
+  RobotParams robot_params_; //should be a list if different robots
+  BoundedSpaceParams local_space_params_;
+  PlanningParams planning_params_;
+  RandomSamplingParams* random_sampling_params_;
+
+  // Check which parameters are used
+  RandomSampler random_sampler_;
+  BoundedSpaceParams global_space_params_;
+  RobotDynamicsParams robot_dynamics_params_;
+
+  MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>* map_manager_;
+
+  // Statistic from the random sampling.
+  std::shared_ptr<SampleStatistic> stat_;
+
+  // List of robots ready to update map
+  std::vector<bool> odometry_ready_;
+
+  // id of active robot to sample from 
+  int* active_id_;
+
+  // List of robot position vertices
+  std::vector<Vertex*> root_vertices_;
+
+  // Query queue
+  // make a msg struct with query info
+    // id, start, end
+
+  //---------------------FUNCTIONS----------------------
+
+  bool sampleVertex(StateVec& state);
+
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
