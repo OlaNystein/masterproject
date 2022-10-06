@@ -30,7 +30,15 @@ namespace prm{
 class Prm {
   public:
 
+  enum GraphStatus {
+    OK = 0,         // Everything good
+    ERR_KDTREE,     // Could not get nearest neighbours from kdtree
+    NOT_OK,         // Other error
+  };
+
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+
+  void setState(StateVec& state, int unit_id);
 
   private:
   
@@ -68,8 +76,9 @@ class Prm {
   int* active_id_;
 
   // List of robot position vertices
-  std::vector<Vertex*> root_vertices_;
+  std::vector<Vertex*> current_vertices_;
 
+  std::vector<StateVec> current_states_;
   // Query queue
   // make a msg struct with query info
     // id, start, end
@@ -78,13 +87,41 @@ class Prm {
 
   bool sampleVertex(StateVec& state);
 
+  Prm::GraphStatus expandGraph();
+
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
   // - How should sampling and adding to the same roadmap work? what is best computationally?
   //    - Should I test multiple solutions and have them in the results?
   // - Swarming/splitting
-}
+
+  void convertStateToPoseMsg(const StateVec& state, geometry_msgs::Pose& pose) {
+    pose.position.x = state[0];
+    pose.position.y = state[1];
+    pose.position.z = state[2];
+    double yawhalf = state[3] * 0.5;
+    pose.orientation.x = 0.0;
+    pose.orientation.y = 0.0;
+    pose.orientation.z = sin(yawhalf);
+    pose.orientation.w = cos(yawhalf);
+  }
+
+  void convertPoseMsgToState(const geometry_msgs::Pose& pose, StateVec& state) {
+    state[0] = pose.position.x;
+    state[1] = pose.position.y;
+    state[2] = pose.position.z;
+    state[3] = tf::getYaw(pose.orientation);
+  }
+
+  inline void truncateYaw(double& x) {
+    if (x > M_PI)
+      x -= 2 * M_PI;
+    else if (x < -M_PI)
+      x += 2 * M_PI;
+  }
+
+};
 
 } //namespace search
 

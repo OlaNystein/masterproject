@@ -10,6 +10,8 @@ Prm::Prm(onst ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), 
 
     roadmap_graph_.reset(new GraphManager());
 
+    map_manager_->resetMap();
+
     //TODO initialize odometry_ready to size of robotvector
 
     for (int i = 0; i < odometry_ready_.size()){
@@ -22,6 +24,15 @@ Prm::Prm(onst ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), 
 
 }
 
+void Prm::setState(StateVec& state, int unit_id){
+  if (!odometry_ready) {
+    // First time receive the pose/odometry for planning purpose.
+    // Reset the voxblox map
+    ROS_WARN("Received the first odometry from unit %d", unit_id);
+  }
+  current_states_[unit_id] = state;
+  odometry_ready = true;
+}
 
 bool Prm::sampleVertex(StateVec& state) {
   bool found = false;
@@ -29,7 +40,7 @@ bool Prm::sampleVertex(StateVec& state) {
 
   while (!found && while_thresh--){
       
-    random_sampler_.generate(root_vertices[*active_id_]->state, state);
+    random_sampler_.generate(current_vertices[*active_id_]->state, state);
 
     // Very fast check if the sampled point is inside the planning space.
     // This helps eliminate quickly points outside the sampling space.
