@@ -4,7 +4,7 @@ namespace search{
 namespace prm{
 
 
-Prm::Prm(onst ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
+Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
 
     visualization_ = new Visualization(nh_, nh_private_);
 
@@ -14,7 +14,7 @@ Prm::Prm(onst ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), 
 
     //TODO initialize odometry_ready to size of robotvector
 
-    for (int i = 0; i < odometry_ready_.size()){
+    for (int i = 0; i < odometry_ready_.size(); i++){
         odometry_ready_[i] = false;
     }
 
@@ -24,14 +24,23 @@ Prm::Prm(onst ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), 
 
 }
 
+Prm::GraphStatus Prm::expandGraph(){
+  // tuning parameters
+  int loop_count(0);
+  int num_vertices_added(0);
+  int num_edges_added(0);
+
+  //while ((loop_count++ < planning_params_.num_loops_max) && )
+}
+
 void Prm::setState(StateVec& state, int unit_id){
-  if (!odometry_ready) {
+  if (!odometry_ready_[unit_id]) {
     // First time receive the pose/odometry for planning purpose.
     // Reset the voxblox map
     ROS_WARN("Received the first odometry from unit %d", unit_id);
   }
   current_states_[unit_id] = state;
-  odometry_ready = true;
+  odometry_ready_[unit_id] = true;
 }
 
 bool Prm::sampleVertex(StateVec& state) {
@@ -40,7 +49,7 @@ bool Prm::sampleVertex(StateVec& state) {
 
   while (!found && while_thresh--){
       
-    random_sampler_.generate(current_vertices[*active_id_]->state, state);
+    random_sampler_.generate(current_vertices_[*active_id_]->state, state);
 
     // Very fast check if the sampled point is inside the planning space.
     // This helps eliminate quickly points outside the sampling space.

@@ -31,3 +31,5 @@ class RIMAPP {
 
 
 } // namespace search
+
+#endif

@@ -1,4 +1,4 @@
-#include "rrtstar/prm_rviz.h"
+#include "prm/prm_rviz.h"
 
 #include <tf/transform_datatypes.h>
 

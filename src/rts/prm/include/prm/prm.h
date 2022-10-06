@@ -82,6 +82,11 @@ class Prm {
   // Query queue
   // make a msg struct with query info
     // id, start, end
+  
+  // Precompute params for planner.
+  Eigen::Vector3d robot_box_size_;
+  int planning_num_vertices_max_;
+  int planning_num_edges_max_;
 
   //---------------------FUNCTIONS----------------------
 
