@@ -40,6 +40,8 @@ class Prm {
 
   void setState(StateVec& state, int unit_id);
 
+  Prm::GraphStatus planPath();
+
   private:
   
   ros::NodeHandle nh_;
@@ -73,7 +75,7 @@ class Prm {
   std::vector<bool> odometry_ready_;
 
   // id of active robot to sample from 
-  int* active_id_;
+  int active_id_;
 
   // List of robot position vertices
   std::vector<Vertex*> current_vertices_;
@@ -92,7 +94,7 @@ class Prm {
 
   bool sampleVertex(StateVec& state);
 
-  Prm::GraphStatus expandGraph();
+  void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
   //list of robots with id, lets start with 1 robot
   //one common roadmap

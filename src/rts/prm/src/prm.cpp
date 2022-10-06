@@ -24,13 +24,38 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 
 }
 
-Prm::GraphStatus Prm::expandGraph(){
+Prm::GraphStatus Prm::planPath(){
   // tuning parameters
   int loop_count(0);
   int num_vertices_added(0);
   int num_edges_added(0);
 
-  //while ((loop_count++ < planning_params_.num_loops_max) && )
+  while ((loop_count++ < planning_params_.num_loops_max) && 
+  (num_vertices_added < planning_num_vertices_max_) &&
+  (num_edges_added < planning_num_edges_max_)) {
+    StateVec new_state;
+    if (!sampleVertex(new_state)) {
+      continue; // skip invalid sample
+    }
+
+    ExpandGraphReport rep;
+    expandGraph(roadmap_graph_, new_state, rep);
+  }
+}
+
+void Prm::expandGraph(std::shared_ptr<GraphManager> graph, 
+                      StateVec& new_state, ExpandGraphReport& rep){
+  // Find nearest neighbour
+  Vertex* nearest_vertex = NULL;
+  if (!graph_manager->getNearestVertex(&new_state, &nearest_vertex)) {
+    rep.status = ExpandGraphStatus::kErrorKdTree;
+    return;
+  }
+  if (nearest_vertex == NULL) {
+    rep.status = ExpandGraphStatus::kErrorKdTree;
+    return;
+  }
+
 }
 
 void Prm::setState(StateVec& state, int unit_id){
@@ -49,7 +74,7 @@ bool Prm::sampleVertex(StateVec& state) {
 
   while (!found && while_thresh--){
       
-    random_sampler_.generate(current_vertices_[*active_id_]->state, state);
+    random_sampler_.generate(current_vertices_[active_id_]->state, state);
 
     // Very fast check if the sampled point is inside the planning space.
     // This helps eliminate quickly points outside the sampling space.
