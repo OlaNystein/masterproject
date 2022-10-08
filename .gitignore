@@ -23,6 +23,9 @@ devel_isolated/
 
 # /src/*
 
+/src/misc/*
+/src/mapping/*
+
 .rosinstall
 .catkin_tools/
 
