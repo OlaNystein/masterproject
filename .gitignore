@@ -23,6 +23,10 @@ devel_isolated/
 
 # /src/*
 
+/src/misc/*
+/src/mappin/*
+/src/sim/*
+
 .rosinstall
 .catkin_tools/
 
