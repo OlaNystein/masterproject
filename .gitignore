@@ -24,7 +24,7 @@ devel_isolated/
 # /src/*
 
 /src/misc/*
-/src/mappin/*
+/src/mapping/*
 /src/sim/*
 
 .rosinstall

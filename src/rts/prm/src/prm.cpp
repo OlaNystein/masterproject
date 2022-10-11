@@ -47,7 +47,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
                       StateVec& new_state, ExpandGraphReport& rep){
   // Find nearest neighbour
   Vertex* nearest_vertex = NULL;
-  if (!graph_manager->getNearestVertex(&new_state, &nearest_vertex)) {
+  if (!roadmap_graph_->getNearestVertex(&new_state, &nearest_vertex)) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
     return;
   }
@@ -55,7 +55,91 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     rep.status = ExpandGraphStatus::kErrorKdTree;
     return;
   }
+  // Check for collision of new connection plus some overshoot distance.
+  Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
+                         nearest_vertex->state[2]);
+  Eigen::Vector3d direction(new_state[0] - origin[0], new_state[1] - origin[1],
+                            new_state[2] - origin[2]);
+  double direction_norm = direction.norm();
+  if (direction_norm > planning_params_.edge_length_max) {
+    direction = planning_params_.edge_length_max * direction.normalized();
+  } else if ((direction_norm <= planning_params_.edge_length_min)) {
+    // Should not add short edge.
+    rep.status = ExpandGraphStatus::kErrorShortEdge;
+    return;
+  }
+  // Recalculate the distance.
+  direction_norm = direction.norm();
+  new_state[0] = origin[0] + direction[0];
+  new_state[1] = origin[1] + direction[1];
+  new_state[2] = origin[2] + direction[2];
+  // Since we are buiding graph,
+  // Consider to check the overshoot for both 2 directions except root node.
+  Eigen::Vector3d overshoot_vec =
+      planning_params_.edge_overshoot * direction.normalized();
+  Eigen::Vector3d start_pos = origin + robot_params_.center_offset;
+  if (nearest_vertex->id != 0) start_pos = start_pos - overshoot_vec;
+  Eigen::Vector3d end_pos =
+      origin + robot_params_.center_offset + direction + overshoot_vec;
 
+  // Check collision if lazy mode is not activated
+  if (MapManager::VoxelStatus::kFree ==
+      map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, true) || lazy_mode_) {
+    Vertex* new_vertex =
+        new Vertex(roadmap_graph_->generateVertexID(), new_state);
+    // Form a tree as the first step.
+    new_vertex->parent = nearest_vertex;
+    new_vertex->distance = nearest_vertex->distance + direction_norm;
+    nearest_vertex->children.push_back(new_vertex);
+    roadmap_graph_->addVertex(new_vertex);
+    ++rep.num_vertices_added;
+    rep.vertex_added = new_vertex;
+    roadmap_graph_->addEdge(new_vertex, nearest_vertex, direction_norm);
+    ++rep.num_edges_added;
+
+    // add more edges to create graph
+    std::vector<Vertex*> nearest_vertices;
+    if (!roadmap_graph_->getNearestVertices(
+            &new_state, planning_params_.nearest_range, &nearest_vertices)) {
+      rep.status = ExpandGraphStatus::kErrorKdTree;
+      return;
+    }
+    origin << new_vertex->state[0],new_vertex->state[1],new_vertex->state[2];
+    for (int i = 0; i < nearest_vertices.size(); ++i) {
+      direction << nearest_vertices[i]->state[0] - origin[0],
+          nearest_vertices[i]->state[1] - origin[1],
+          nearest_vertices[i]->state[2] - origin[2];
+      double d_norm = direction.norm();
+
+      if ((d_norm > planning_params_.nearest_range_min) &&
+          (d_norm < planning_params_.nearest_range_max)) {
+        Eigen::Vector3d p_overshoot =
+            direction / d_norm * planning_params_.edge_overshoot;
+        Eigen::Vector3d p_start =
+            origin + robot_params_.center_offset - p_overshoot;
+        Eigen::Vector3d p_end =
+            origin + robot_params_.center_offset + direction;
+        if (nearest_vertices[i]->id != 0) p_end = p_end + p_overshoot;
+        // Check collision if lazy mode is not activated
+        if (MapManager::VoxelStatus::kFree ==
+              map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true) || lazy_mode_) {
+            roadmap_graph_->addEdge(new_vertex, nearest_vertices[i], d_norm);
+            ++rep.num_edges_added;
+        }
+      }
+    }
+    
+  } else {
+    stat_->num_edges_fail++;
+    if (stat_->num_edges_fail < 500) {
+      std::vector<double> vtmp = {start_pos[0], start_pos[1], start_pos[2],
+                                  end_pos[0],   end_pos[1],   end_pos[2]};
+      stat_->edges_fail.push_back(vtmp);
+    }
+    rep.status = ExpandGraphStatus::kErrorCollisionEdge;
+    return;
+  }
+  rep.status = ExpandGraphStatus::kSuccess;
 }
 
 void Prm::setState(StateVec& state, int unit_id){

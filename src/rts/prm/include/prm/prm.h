@@ -74,6 +74,8 @@ class Prm {
   // List of robots ready to update map
   std::vector<bool> odometry_ready_;
 
+  bool lazy_mode_;
+
   // id of active robot to sample from 
   int active_id_;
 
