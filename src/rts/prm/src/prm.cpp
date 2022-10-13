@@ -92,20 +92,50 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       break;
     }
   }
-    ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
-           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
-    
-    roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
+  ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
+          roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
+  
+  roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
 
-    if (num_target_neighbours < 1) {
-      ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
-    }
+  if (num_target_neighbours < 1) {
+    ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
+  }
 
-    // Get the shortes path to current waypoint, and collision check the path if in lazy mode
-
+  // Get the shortest path to current waypoint, and collision check the path if in lazy mode
+  if(lazy_mode_){
     std::vector<int> path_id_list;
-    bool target_reached = false;
-    // while(true);
+    bool collision_free_path_found = false;
+    while(!collision_free_path_found){
+      //TODO
+    }
+  } else {
+    // Get the shortest path to current waypoint
+    std::vector<int> path_id_list;
+    roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
+    while (!path_id_list.empty()) {
+      geometry_msgs::Pose pose;
+      int id = path_id_list.back();
+      path_id_list.pop_back();
+      convertStateToPoseMsg(roadmap_graph_->getVertex(id)->state, pose);
+      best_path.push_back(pose);
+    }
+  }
+
+  // Yaw correction
+  if (planning_params_.yaw_tangent_correction) {
+    for (int i = 0; i < (best_path.size() - 1); ++i) {
+      Eigen::Vector3d vec(best_path[i + 1].position.x - best_path[i].position.x,
+                          best_path[i + 1].position.y - best_path[i].position.y,
+                          best_path[i + 1].position.z - best_path[i].position.z);
+      double yaw = std::atan2(vec[1], vec[0]);
+      tf::Quaternion quat;
+      quat.setEuler(0.0, 0.0, yaw);
+      best_path[i + 1].orientation.x = quat.x();
+      best_path[i + 1].orientation.y = quat.y();
+      best_path[i + 1].orientation.z = quat.z();
+      best_path[i + 1].orientation.w = quat.w();
+    }
+  }
 }
 
 void Prm::expandGraph(std::shared_ptr<GraphManager> graph, 
