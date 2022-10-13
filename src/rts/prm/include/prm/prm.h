@@ -40,7 +40,7 @@ class Prm {
 
   void setState(StateVec& state, int unit_id);
 
-  Prm::GraphStatus planPath();
+  Prm::GraphStatus planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
 
   private:
   
@@ -81,8 +81,11 @@ class Prm {
 
   // List of robot position vertices
   std::vector<Vertex*> current_vertices_;
-
+  // List of robot states
   std::vector<StateVec> current_states_;
+  // List of current robot waypoints
+  std::vector<Vertex*> current_waypoints_;
+
   // Query queue
   // make a msg struct with query info
     // id, start, end

@@ -24,15 +24,33 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 
 }
 
-Prm::GraphStatus Prm::planPath(){
+Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
   // tuning parameters
   int loop_count(0);
   int num_vertices_added(0);
   int num_edges_added(0);
+  int num_target_neighbours(0);
 
-  while ((loop_count++ < planning_params_.num_loops_max) && 
+  StateVec target_state;
+  convertPoseMsgToState(target_pose, target_state);
+  current_waypoints_[active_id_] = current_vertices_[active_id_];
+
+  Eigen::Vector3d dir_vec(current_states_[active_id_][0] - target_state[0],
+                          current_states_[active_id_][1] - target_state[1],
+                          current_states_[active_id_][2] - target_state[2]);
+  double dir_dist = dir_vec.norm();
+  double best_dist = 10000000; //inf
+
+  bool stop_sampling = false;
+
+  std::vector<Vertex*> target_neighbours;
+
+
+
+  while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
   (num_vertices_added < planning_num_vertices_max_) &&
   (num_edges_added < planning_num_edges_max_)) {
+
     StateVec new_state;
     if (!sampleVertex(new_state)) {
       continue; // skip invalid sample
@@ -40,7 +58,54 @@ Prm::GraphStatus Prm::planPath(){
 
     ExpandGraphReport rep;
     expandGraph(roadmap_graph_, new_state, rep);
+
+    if (rep.status == ExpandGraphStatus::kSuccess) {
+
+      num_vertices_added += rep.num_vertices_added;
+      num_edges_added += rep.num_edges_added;
+      // Check if state is inside target area
+      Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
+                                 new_state[1] - target_state[1],
+                                 new_state[2] - target_state[2]);
+      
+      // Check if sampled vertex is close enough to target area
+      if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
+
+        target_neighbours.push_back(rep.vertex_added);
+        num_target_neighbours++;
+
+        if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
+          // stop samling if we have enough sampled points in target area
+          stop_sampling = true;
+        }
+      }
+
+      if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
+        // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
+        best_dist = radius_vec.norm();
+        current_waypoints_[active_id_] = rep.vertex_added;
+      }
+    }
+
+    if ((loop_count >= planning_params_.num_loops_cutoff) && 
+        (roadmap_graph_->getNumVertices() <= 1)) {
+      break;
+    }
   }
+    ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
+           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
+    
+    roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
+
+    if (num_target_neighbours < 1) {
+      ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
+    }
+
+    // Get the shortes path to current waypoint, and collision check the path if in lazy mode
+
+    std::vector<int> path_id_list;
+    bool target_reached = false;
+    // while(true);
 }
 
 void Prm::expandGraph(std::shared_ptr<GraphManager> graph, 
