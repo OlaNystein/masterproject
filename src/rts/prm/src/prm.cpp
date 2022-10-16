@@ -106,7 +106,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     std::vector<int> path_id_list;
     bool collision_free_path_found = false;
     while(!collision_free_path_found){
-      roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
+      roadmap_graph_->findShortestPaths(leggtilcurrentv, roadmap_graph_rep_);
       roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
       for(int i = 0; i < path_id_list.size()-1; i++){
         Vertex* p_start = roadmap_graph_->getVertex(path_id_list[i]);
