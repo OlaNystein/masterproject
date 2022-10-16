@@ -40,7 +40,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
                           current_states_[active_id_][2] - target_state[2]);
   double dir_dist = dir_vec.norm();
   double best_dist = 10000000; //inf
-
+  
   bool stop_sampling = false;
 
   std::vector<Vertex*> target_neighbours;
@@ -95,7 +95,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
-  roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
+  
 
   if (num_target_neighbours < 1) {
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
@@ -106,11 +106,24 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     std::vector<int> path_id_list;
     bool collision_free_path_found = false;
     while(!collision_free_path_found){
-      //TODO
+      roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
+      roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
+      for(int i = 0; i < path_id_list.size()-1; i++){
+        Vertex* p_start = roadmap_graph_->getVertex(path_id_list[i]);
+        Vertex* p_end = roadmap_graph_->getVertex(path_id_list[i]);
+        if (!map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true)){
+          // edge is not collision free
+          roadmap_graph_->removeEdge(p_start, p_end);
+          ROS_WARN("Collision found in path, replanning");
+          break;
+        }
+      }
+
     }
   } else {
     // Get the shortest path to current waypoint
     std::vector<int> path_id_list;
+    roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
     roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
     while (!path_id_list.empty()) {
       geometry_msgs::Pose pose;
