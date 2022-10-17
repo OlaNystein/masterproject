@@ -31,9 +31,10 @@ class Prm {
   public:
 
   enum GraphStatus {
-    OK = 0,         // Everything good
-    ERR_KDTREE,     // Could not get nearest neighbours from kdtree
-    NOT_OK,         // Other error
+    OK = 0,               // Everything good
+    ERR_KDTREE,           // Could not get nearest neighbours from kdtree
+    ERR_NO_FEASIBLE_PATH, // Could not find feasible path
+    NOT_OK,               // Other error
   };
 
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
@@ -101,6 +102,7 @@ class Prm {
 
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
+  bool collisionCheckEdge(StateVec& start, StateVec& end);
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder

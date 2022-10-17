@@ -45,6 +45,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
   std::vector<Vertex*> target_neighbours;
 
+  Vertex* current_v = current_vertices_[active_id_];
 
 
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
@@ -101,37 +102,47 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
   }
 
+  std::vector<int> path_id_list;
+  roadmap_graph_->findShortestPaths(current_v->id, roadmap_graph_rep_);
   // Get the shortest path to current waypoint, and collision check the path if in lazy mode
   if(lazy_mode_){
-    std::vector<int> path_id_list;
+
     bool collision_free_path_found = false;
     while(!collision_free_path_found){
-      roadmap_graph_->findShortestPaths(leggtilcurrentv, roadmap_graph_rep_);
       roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
       for(int i = 0; i < path_id_list.size()-1; i++){
-        Vertex* p_start = roadmap_graph_->getVertex(path_id_list[i]);
-        Vertex* p_end = roadmap_graph_->getVertex(path_id_list[i]);
+        Vertex* v_start = roadmap_graph_->getVertex(path_id_list[i]);
+        Vertex* v_end = roadmap_graph_->getVertex(path_id_list[i]);
+        eigen::Vector3d p_start = 
         if (!map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true)){
           // edge is not collision free
           roadmap_graph_->removeEdge(p_start, p_end);
           ROS_WARN("Collision found in path, replanning");
+          roadmap_graph_->findShortestPaths(current_v, roadmap_graph_rep_);
           break;
         }
+        if (i == path_id_list.size()-1) {
+          // We have iterated through the whole path without having a collision
+          collision_free_path_found = true;
+          Prm::GraphStatus res = Prm::GraphStatus::OK;
+        }
       }
-
+    }
+    if (!collision_free_path_found) {
+      Prm::GraphStatus res = Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
     }
   } else {
     // Get the shortest path to current waypoint
-    std::vector<int> path_id_list;
-    roadmap_graph_->findShortestPaths(roadmap_graph_rep_);
     roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
-    while (!path_id_list.empty()) {
-      geometry_msgs::Pose pose;
-      int id = path_id_list.back();
-      path_id_list.pop_back();
-      convertStateToPoseMsg(roadmap_graph_->getVertex(id)->state, pose);
-      best_path.push_back(pose);
-    }
+  }
+
+  // Creation of path data structure
+  while (!path_id_list.empty()) {
+    geometry_msgs::Pose pose;
+    int id = path_id_list.back();
+    path_id_list.pop_back();
+    convertStateToPoseMsg(roadmap_graph_->getVertex(id)->state, pose);
+    best_path.push_back(pose);
   }
 
   // Yaw correction
@@ -149,6 +160,19 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       best_path[i + 1].orientation.w = quat.w();
     }
   }
+
+  visualization_->visualizeSampler(random_sampler_);
+  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, current_waypoint[active_id_]->id);
+
+  if (roadmap_graph_->getNumVertices() > 1){
+    visualization_->visualizeGraph(roadmap_graph_);
+  } else {
+    visualization_->visualizeFailedEdges(stat_);
+    ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
+    stat_->num_vertices_fail, stat_->num_edges_fail);
+    return Prm::GraphStatus res = Prm::GraphStatus::ERR_KDTREE;
+  }
+  return res;
 }
 
 void Prm::expandGraph(std::shared_ptr<GraphManager> graph, 
@@ -248,6 +272,10 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     return;
   }
   rep.status = ExpandGraphStatus::kSuccess;
+}
+
+bool Prm::collisionCheckEdge(StateVec& start, StateVec& end) {
+
 }
 
 void Prm::setState(StateVec& state, int unit_id){
