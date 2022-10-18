@@ -27,6 +27,16 @@
 namespace search{
 namespace prm{
 
+struct Unit{
+  int id_;
+  Vertex* current_vertex_;
+  StateVec current_state_;
+  Vertex* current_waypoint_;
+  StateVec final_target_;
+  bool reached_final_target_;
+}
+
+
 class Prm {
   public:
 
@@ -48,8 +58,13 @@ class Prm {
   // Set the current robot's state (e.g. from odometry msg)
   void setState(StateVec& state, int unit_id);
 
+  // Set the current active robot
+  void setActiveUnit(int unit_id);
+
   // Plan a path from current position to target pose
   Prm::GraphStatus planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
+
+  std::vector<geometry_msgs::Pose> runPlanner(geometry_msgs::Pose& target_pose);
 
   private:
   

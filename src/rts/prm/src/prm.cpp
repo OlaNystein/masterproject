@@ -67,6 +67,15 @@ void Prm::initializeParams(){
   visualization_->visualizeWorkspace(current_state_, global_space_params_, local_space_params_);
 }
 
+std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
+  ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
+  ros::spinOnce();
+
+  std::vector<geometry_msgs::Pose> best_path;
+
+  // TODO
+}
+
 Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
   // tuning parameters
   int loop_count(0);
@@ -325,6 +334,10 @@ void Prm::setState(StateVec& state, int unit_id){
   }
   current_states_[unit_id] = state;
   odometry_ready_[unit_id] = true;
+}
+
+void Prm::setActiveUnit(int unit_id){
+  active_id_ = unit_id;
 }
 
 bool Prm::sampleVertex(StateVec& state) {
