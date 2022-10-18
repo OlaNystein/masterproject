@@ -24,6 +24,49 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 
 }
 
+bool Prm::loadParams(){
+  std::string ns = ros::this_node::getName();
+
+  // Load all relevant parameters
+  if (!sensor_params_.loadParams(ns + "/SensorParams")) return false
+
+  if (!free_frustum_params_.loadParams(ns + "/FreeFrustumParams")) {
+    ROS_WARN("No setting for FreeFrustumParams.");
+    // return false;
+  }
+
+  if (!robot_params_.loadParams(ns + "/RobotParams")) return false;
+
+  if (!local_space_params_.loadParams(ns + "/BoundedSpaceParams/Local")) return false;
+  
+  if (!planning_params_.loadParams(ns + "/PlanningParams")) return false;
+
+  if (!random_sampler_.loadParams(ns + "/RandomSamplerParams/SamplerForSearching")) return false;
+
+  if (!global_space_params_.loadParams(ns + "/BoundedSpaceParams/Global")) return false;
+
+  if (!robot_dynamics_params_.loadParams(ns + "/RobotDynamics")) return false;
+
+  random_sampling_params_ = new RandomSamplingParams();
+
+  planning_params_.v_max = robot_dynamics_params_.v_max;
+  planning_params_.v_homing_max = robot_dynamics_params_.v_homing_max;
+
+  initializeParams();
+  return true;
+}
+
+void Prm::initializeParams(){
+  random_sampler_.setParams(local_space_params_, global_space_params_);
+
+  // Precompute robot box size for planning
+  robot_params_.getPlanningSize(robot_box_size_);
+  planning_num_vertices_max_ = planning_params_.num_vertices_max;
+  planning_num_edges_max_ = planning_params_.num_edges_max;
+
+  visualization_->visualizeWorkspace(current_state_, global_space_params_, local_space_params_);
+}
+
 Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
   // tuning parameters
   int loop_count(0);
@@ -272,10 +315,6 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     return;
   }
   rep.status = ExpandGraphStatus::kSuccess;
-}
-
-bool Prm::collisionCheckEdge(StateVec& start, StateVec& end) {
-
 }
 
 void Prm::setState(StateVec& state, int unit_id){

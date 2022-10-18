@@ -39,8 +39,16 @@ class Prm {
 
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
+  // Initialize parameters
+  void initializeParams();
+
+  //Load Parameters from the prm yaml config file
+  bool loadParams();
+
+  // Set the current robot's state (e.g. from odometry msg)
   void setState(StateVec& state, int unit_id);
 
+  // Plan a path from current position to target pose
   Prm::GraphStatus planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
 
   private:
@@ -102,7 +110,6 @@ class Prm {
 
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
-  bool collisionCheckEdge(StateVec& start, StateVec& end);
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
