@@ -110,6 +110,7 @@ class Prm {
   // List of current robot waypoints
   std::vector<Vertex*> current_waypoints_;
 
+  std::vector<bool> final_targets_reached_;
   // Query queue
   // make a msg struct with query info
     // id, start, end

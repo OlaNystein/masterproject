@@ -72,8 +72,24 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   ros::spinOnce();
 
   std::vector<geometry_msgs::Pose> best_path;
-
-  // TODO
+  final_targets_reached_[active_id_] = false;
+  Prm::GraphStatus status = planPath(target_pose, best_path);
+  
+  switch(status) {
+    case Prm::GraphStatus::ERR_KDTREE:
+      ROS_WARN("Error with the graph");
+      break;
+    case Prm::GraphStatus::ERR_NO_FEASIBLE_PATH:
+      ROS_WARN("Could not find feasible path to execute");
+      break;
+    case Prm::GraphStatus::NOT_OK:
+      ROS_WARN("Some error");
+      break;
+    case Prm::GraphStatus::OK:
+      ROS_INFO("Found path to execute");
+      break;
+  }
+  return best_path;
 }
 
 Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
@@ -97,8 +113,19 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
   std::vector<Vertex*> target_neighbours;
 
-  Vertex* current_v = current_vertices_[active_id_];
-
+  // Try to add current state as vertex in graph
+  ExpandGraphReport startRep;
+  expandGraph(roadmap_graph_, current_states_[active_id_], startRep);
+  if (startRep.status == ExpandGraphStatus::kSuccess) {
+    ROS_INFO("Successfully added current posisition to tree to start pathplan");
+    current_vertices_[active_id_] = startRep.vertex_added;
+    Vertex* current_v = current_vertices_[active_id_];
+    stat_->init(current_v->state);
+  } else {
+    ROS_WARN("Could not add current position to tree");
+  }
+  
+  ROS_INFO("Current state: %f %f %f", current_states_[active_id_][0], current_states_[active_id_][1], current_states_[active_id_][2]);
 
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
   (num_vertices_added < planning_num_vertices_max_) &&
