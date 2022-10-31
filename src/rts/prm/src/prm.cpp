@@ -28,7 +28,7 @@ bool Prm::loadParams(){
   std::string ns = ros::this_node::getName();
 
   // Load all relevant parameters
-  if (!sensor_params_.loadParams(ns + "/SensorParams")) return false
+  if (!sensor_params_.loadParams(ns + "/SensorParams")) return false;
 
   if (!free_frustum_params_.loadParams(ns + "/FreeFrustumParams")) {
     ROS_WARN("No setting for FreeFrustumParams.");
@@ -64,7 +64,7 @@ void Prm::initializeParams(){
   planning_num_vertices_max_ = planning_params_.num_vertices_max;
   planning_num_edges_max_ = planning_params_.num_edges_max;
 
-  visualization_->visualizeWorkspace(current_state_, global_space_params_, local_space_params_);
+  visualization_->visualizeWorkspace(current_states_[active_id_], global_space_params_, local_space_params_);
 }
 
 std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
@@ -114,15 +114,17 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   std::vector<Vertex*> target_neighbours;
 
   // Try to add current state as vertex in graph
+  Vertex* current_v = NULL;
   ExpandGraphReport startRep;
   expandGraph(roadmap_graph_, current_states_[active_id_], startRep);
   if (startRep.status == ExpandGraphStatus::kSuccess) {
     ROS_INFO("Successfully added current posisition to tree to start pathplan");
     current_vertices_[active_id_] = startRep.vertex_added;
-    Vertex* current_v = current_vertices_[active_id_];
+    current_v = current_vertices_[active_id_];
     stat_->init(current_v->state);
   } else {
     ROS_WARN("Could not add current position to tree");
+    return Prm::GraphStatus::ERR_KDTREE;
   }
   
   ROS_INFO("Current state: %f %f %f", current_states_[active_id_][0], current_states_[active_id_][1], current_states_[active_id_][2]);
@@ -175,7 +177,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
-  
+  Prm::GraphStatus res = Prm::GraphStatus::NOT_OK;
 
   if (num_target_neighbours < 1) {
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
@@ -191,24 +193,24 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
       for(int i = 0; i < path_id_list.size()-1; i++){
         Vertex* v_start = roadmap_graph_->getVertex(path_id_list[i]);
-        Vertex* v_end = roadmap_graph_->getVertex(path_id_list[i]);
-        eigen::Vector3d p_start = 
-        if (!map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true)){
+        Vertex* v_end = roadmap_graph_->getVertex(path_id_list[i+1]);
+        
+        if (!checkCollisionBetweenVertices(v_start, v_end)){
           // edge is not collision free
-          roadmap_graph_->removeEdge(p_start, p_end);
+          roadmap_graph_->removeEdge(v_start, v_end);
           ROS_WARN("Collision found in path, replanning");
-          roadmap_graph_->findShortestPaths(current_v, roadmap_graph_rep_);
+          roadmap_graph_->findShortestPaths(current_v->id, roadmap_graph_rep_);
           break;
         }
         if (i == path_id_list.size()-1) {
           // We have iterated through the whole path without having a collision
           collision_free_path_found = true;
-          Prm::GraphStatus res = Prm::GraphStatus::OK;
+          res = Prm::GraphStatus::OK;
         }
       }
     }
     if (!collision_free_path_found) {
-      Prm::GraphStatus res = Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
+      res = Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
     }
   } else {
     // Get the shortest path to current waypoint
@@ -241,7 +243,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   visualization_->visualizeSampler(random_sampler_);
-  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, current_waypoint[active_id_]->id);
+  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, current_waypoints_[active_id_]->id);
 
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_->visualizeGraph(roadmap_graph_);
@@ -249,7 +251,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     visualization_->visualizeFailedEdges(stat_);
     ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
     stat_->num_vertices_fail, stat_->num_edges_fail);
-    return Prm::GraphStatus res = Prm::GraphStatus::ERR_KDTREE;
+    res = Prm::GraphStatus::ERR_KDTREE;
   }
   return res;
 }
@@ -403,11 +405,6 @@ bool Prm::sampleVertex(StateVec& state) {
          == MapManager::VoxelStatus::kFree)  {  
       
       random_sampler_.pushSample(state, true);
-      found = true;
-    
-    } else {
-      
-      random_sampler_.pushSample(state, false);
       
       stat_->num_vertices_fail++;
       
@@ -415,6 +412,41 @@ bool Prm::sampleVertex(StateVec& state) {
 
   }
   return found;
+}
+
+bool Prm::checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end){
+  // Get start position
+  Eigen::Vector3d origin(v_start->state[0], v_start->state[1],
+                         v_start->state[2]);
+  // Get edge direction
+  Eigen::Vector3d direction(v_end->state[0] - origin[0], v_end->state[1] - origin[1],
+                            v_end->state[2] - origin[2]);
+  
+  // Add robot overshoot
+  Eigen::Vector3d overshoot_vec = planning_params_.edge_overshoot * direction.normalized();
+  
+  // Add overshoot in start position except root
+  Eigen::Vector3d start_pos = origin + robot_params_.center_offset;
+  if (v_start->id != 0) start_pos = start_pos - overshoot_vec;
+  // Add overshoot in end position
+  Eigen::Vector3d end_pos =
+      origin + robot_params_.center_offset + direction + overshoot_vec;
+  
+  // Check collision along edge
+  if(MapManager::VoxelStatus::kFree == map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, true)){
+    return true;
+  }
+
+  return false;
+
+}
+
+bool Prm::getTargetReachedSingle(int unit_id) {
+  return final_targets_reached_[unit_id];
+}
+
+int Prm::getActiveUnit(){
+  return active_id_;
 }
 
 } // prm

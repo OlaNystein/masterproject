@@ -13,6 +13,8 @@
 #include "planner_msgs/RobotStatus.h"
 #include "planner_msgs/planner_search.h"
 
+#include "rimapp_msgs/plan_path_single.h"
+
 #include <nav_msgs/Path.h>
 
 namespace search {
@@ -36,10 +38,10 @@ class RIMAPP {
   prm::Prm* prm_;
 
   bool planServiceCallback(
+    rimapp_msgs::plan_path_single::Request& req,
+    rimapp_msgs::plan_path_single::Response& res);
 
-  );
-
-  void poseCallBack(const geometry_msgs::PoseWithCovarianceStamped& pose);
+  void poseCallback(const geometry_msgs::PoseWithCovarianceStamped& pose);
   void poseStampedCallback(const geometry_msgs::PoseStamped& pose);
   void processPose(const geometry_msgs::Pose& pose);
   void odometryCallback(const nav_msgs::Odometry& odo);

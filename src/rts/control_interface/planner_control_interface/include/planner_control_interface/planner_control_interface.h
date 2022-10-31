@@ -35,6 +35,8 @@
 
 #include "rrtstar_msgs/search.h"
 #include "rrtstar_msgs/pci_search.h"
+#include "rimapp_msgs/plan_path_single.h"
+#include "rimapp_msgs/pci_plan_path_single.srv"
 
 namespace search {
 
@@ -69,14 +71,14 @@ class PlannerControlInterface {
   ros::Subscriber pose_sub_;
   ros::Subscriber pose_stamped_sub_;
   
-  
+  ros::ServiceClient rimapp_client_;
   ros::ServiceClient search_client_;
   ros::ServiceClient planner_client_;
   ros::ServiceClient planner_global_client_;
   ros::ServiceClient planner_geofence_client_;
   ros::ServiceClient planner_set_exp_mode_client_;
   
-
+  ros::ServiceServer pci_rimapp_server_;
   ros::ServiceServer pci_search_server_;
   ros::ServiceServer pci_server_;
   ros::ServiceServer pci_std_automatic_planning_server_;
@@ -121,6 +123,9 @@ class PlannerControlInterface {
   void poseStampedCallback(const geometry_msgs::PoseStamped &pose);
   void processPose(const geometry_msgs::Pose &pose);
 
+  bool rimappCallback(rimapp_msgs::pci_plan_path_single::Request &req,
+                      rimapp_msgs::pci_plan_path_single::Response &res);
+
   bool searchCallback(rrtstar_msgs::pci_search::Request &req,
                       rrtstar_msgs::pci_search::Response &res);
 
@@ -164,6 +169,13 @@ class PlannerControlInterface {
   ros::Time ttime;
   double total_time_;
   void runSearch();
+
+  //rimapp parameters
+  bool rimapp_request_;
+  geometry_msgs::Pose current_target_;
+  bool target_reached_;
+  int active_id_
+  void runRimapp();
 
 };
 }  // namespace explorer

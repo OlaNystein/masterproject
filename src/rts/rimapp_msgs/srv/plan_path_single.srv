@@ -1,0 +1,7 @@
+# plan path for one robot
+geometry_msgs/Pose target_pose
+int32 unit_id
+-----------
+# return best path
+geometry_msgs/Pose[] best_path
+bool final_target_reached

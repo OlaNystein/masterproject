@@ -13,7 +13,6 @@
 #include "kdtree/kdtree.h"
 
 #include "prm/prm_rviz.h"
-#include "rrtstar_msgs/search.h"
 
 #include "planner_common/graph_base.h"
 #include "planner_common/graph.h"
@@ -34,7 +33,7 @@ struct Unit{
   Vertex* current_waypoint_;
   StateVec final_target_;
   bool reached_final_target_;
-}
+};
 
 
 class Prm {
@@ -60,6 +59,10 @@ class Prm {
 
   // Set the current active robot
   void setActiveUnit(int unit_id);
+
+  bool getTargetReachedSingle(int unit_id);
+
+  int getActiveUnit();
 
   // Plan a path from current position to target pose
   Prm::GraphStatus planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
@@ -126,6 +129,7 @@ class Prm {
 
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
+  bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
