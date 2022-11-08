@@ -5,3 +5,4 @@ int32 unit_id
 # return best path
 geometry_msgs/Pose[] best_path
 bool final_target_reached
+bool stuck

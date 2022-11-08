@@ -5,23 +5,69 @@ namespace prm{
 
 
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
-
+  
     visualization_ = new Visualization(nh_, nh_private_);
-
     roadmap_graph_.reset(new GraphManager());
+    map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
+    nh_, nh_private_);
+    //TODO initialize odometry_ready to size of robotvector, currently one
+    odometry_ready_.push_back(false);
 
-    map_manager_->resetMap();
+    active_id_ = 0;
+    
+    lazy_mode_ = false;
 
-    //TODO initialize odometry_ready to size of robotvector
+ 
+}
 
-    for (int i = 0; i < odometry_ready_.size(); i++){
-        odometry_ready_[i] = false;
-    }
+void Prm::hardReset(){
+  roadmap_graph_.reset(new GraphManager());
+  stat_.reset(new SampleStatistic());
 
+}
 
+void Prm::softReset(){
+  // ROS_WARN("before statinit");
+  // StateVec root_state = units_[active_id_].current_state_;
+  // ROS_WARN("middle state, x: %f, y: %f, z: %f", root_state.x(), root_state.y(), root_state.z());
 
+  // stat_->init(root_state);
+  // //--------where to put code under?
+  // ROS_WARN("after statinit and before adding vertex");
 
+  // Vertex* root_vertex = new Vertex(roadmap_graph_->generateVertexID(), root_state);
+  // roadmap_graph_->addVertex(root_vertex);
+  // ROS_WARN("after addvertex");
 
+  // // First check if this position is free to go.
+  // MapManager::VoxelStatus voxel_state = map_manager_->getBoxStatus(
+  //   Eigen::Vector3d(root_state[0], root_state[1], root_state[2]) +
+  //       robot_params_.center_offset,
+  //   robot_box_size_, true);
+  // if (MapManager::VoxelStatus::kFree != voxel_state) {
+  //   switch (voxel_state) {
+  //     case MapManager::VoxelStatus::kFree:
+  //       ROS_INFO("Current box is Free.");
+  //       break;
+  //     case MapManager::VoxelStatus::kOccupied:
+  //       ROS_INFO("Current box contains Occupied voxels.");
+  //       break;
+  //     case MapManager::VoxelStatus::kUnknown:
+  //       ROS_INFO("Current box contains Unknown voxels.");
+  //       break;
+  //   }
+  //   // Assume that even it is not fully free, but safe to clear these voxels.
+  //   ROS_WARN("Starting position is not clear--> clear space around the robot.");
+  //   map_manager_->augmentFreeBox(
+  //       Eigen::Vector3d(root_state[0], root_state[1], root_state[2]) +
+  //           robot_params_.center_offset,
+  //       robot_box_size_);
+  //   }
+
+  //   visualization_->visualizeRobotState(root_vertex->state, robot_params_);
+  //   visualization_->visualizeSensorFOV(root_vertex->state, sensor_params_);
+  //   visualization_->visualizeWorkspace(
+  //       root_vertex->state, global_space_params_, local_space_params_);
 }
 
 bool Prm::loadParams(){
@@ -64,17 +110,20 @@ void Prm::initializeParams(){
   planning_num_vertices_max_ = planning_params_.num_vertices_max;
   planning_num_edges_max_ = planning_params_.num_edges_max;
 
-  visualization_->visualizeWorkspace(current_states_[active_id_], global_space_params_, local_space_params_);
+  visualization_->visualizeWorkspace(units_[active_id_].current_state_, global_space_params_, local_space_params_);
 }
 
 std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
   ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
   ros::spinOnce();
-
+  ROS_WARN("beforereset");
+  softReset();
+  ROS_WARN("afterreset");
   std::vector<geometry_msgs::Pose> best_path;
-  final_targets_reached_[active_id_] = false;
+  units_[active_id_].reached_final_target_ = false;
+  ROS_WARN("beforeplanpath");
   Prm::GraphStatus status = planPath(target_pose, best_path);
-  
+  ROS_WARN("afterplanpath");
   switch(status) {
     case Prm::GraphStatus::ERR_KDTREE:
       ROS_WARN("Error with the graph");
@@ -99,13 +148,29 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_edges_added(0);
   int num_target_neighbours(0);
 
+
+  // Try to add current state as vertex in graph
+  Vertex* current_v = NULL;
+  ExpandGraphReport startRep;
+  expandGraph(roadmap_graph_, units_[active_id_].current_state_, startRep);
+  if (startRep.status == ExpandGraphStatus::kSuccess) {
+    ROS_INFO("Successfully added current posisition to tree to start pathplan");
+    units_[active_id_].current_vertex_= startRep.vertex_added;
+    current_v = units_[active_id_].current_vertex_;
+    stat_->init(current_v->state);
+  } else {
+    ROS_WARN("Could not add current position to tree");
+    return Prm::GraphStatus::ERR_KDTREE;
+  }
+
+
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
-  current_waypoints_[active_id_] = current_vertices_[active_id_];
+  units_[active_id_].current_waypoint_ = units_[active_id_].current_vertex_;
 
-  Eigen::Vector3d dir_vec(current_states_[active_id_][0] - target_state[0],
-                          current_states_[active_id_][1] - target_state[1],
-                          current_states_[active_id_][2] - target_state[2]);
+  Eigen::Vector3d dir_vec(units_[active_id_].current_state_[0] - target_state[0],
+                          units_[active_id_].current_state_[1] - target_state[1],
+                          units_[active_id_].current_state_[2] - target_state[2]);
   double dir_dist = dir_vec.norm();
   double best_dist = 10000000; //inf
   
@@ -113,21 +178,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
   std::vector<Vertex*> target_neighbours;
 
-  // Try to add current state as vertex in graph
-  Vertex* current_v = NULL;
-  ExpandGraphReport startRep;
-  expandGraph(roadmap_graph_, current_states_[active_id_], startRep);
-  if (startRep.status == ExpandGraphStatus::kSuccess) {
-    ROS_INFO("Successfully added current posisition to tree to start pathplan");
-    current_vertices_[active_id_] = startRep.vertex_added;
-    current_v = current_vertices_[active_id_];
-    stat_->init(current_v->state);
-  } else {
-    ROS_WARN("Could not add current position to tree");
-    return Prm::GraphStatus::ERR_KDTREE;
-  }
+
   
-  ROS_INFO("Current state: %f %f %f", current_states_[active_id_][0], current_states_[active_id_][1], current_states_[active_id_][2]);
+  ROS_INFO("Current state: %f %f %f", units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
 
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
   (num_vertices_added < planning_num_vertices_max_) &&
@@ -165,7 +218,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
         // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
         best_dist = radius_vec.norm();
-        current_waypoints_[active_id_] = rep.vertex_added;
+        units_[active_id_].current_waypoint_ = rep.vertex_added;
       }
     }
 
@@ -190,7 +243,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
     bool collision_free_path_found = false;
     while(!collision_free_path_found){
-      roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
+      roadmap_graph_->getShortestPath(units_[active_id_].current_waypoint_->id, roadmap_graph_rep_, false, path_id_list);
       for(int i = 0; i < path_id_list.size()-1; i++){
         Vertex* v_start = roadmap_graph_->getVertex(path_id_list[i]);
         Vertex* v_end = roadmap_graph_->getVertex(path_id_list[i+1]);
@@ -214,7 +267,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     }
   } else {
     // Get the shortest path to current waypoint
-    roadmap_graph_->getShortestPath(current_waypoints_[active_id_]->id, roadmap_graph_rep_, false, path_id_list);
+    roadmap_graph_->getShortestPath(units_[active_id_].current_waypoint_->id, roadmap_graph_rep_, false, path_id_list);
   }
 
   // Creation of path data structure
@@ -243,7 +296,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   visualization_->visualizeSampler(random_sampler_);
-  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, current_waypoints_[active_id_]->id);
+  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_].current_waypoint_->id);
 
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_->visualizeGraph(roadmap_graph_);
@@ -355,14 +408,33 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   rep.status = ExpandGraphStatus::kSuccess;
 }
 
+void Prm::addUnit(int unit_id){
+  unit bot;
+  bot.id_ = unit_id;
+  bot.reached_final_target_ = false;
+  units_.push_back(bot);
+}
+
 void Prm::setState(StateVec& state, int unit_id){
+  if (unit_id-1 > odometry_ready_.size()){
+    // add unit to unit list
+    addUnit(unit_id);
+    odometry_ready_.push_back(false);
+    
+  }
   if (!odometry_ready_[unit_id]) {
     // First time receive the pose/odometry for planning purpose.
     // Reset the voxblox map
     ROS_WARN("Received the first odometry from unit %d", unit_id);
+
+    units_[unit_id].current_state_ = state;
+    odometry_ready_[unit_id] = true;
+    ROS_WARN("Length of units vector: %d", units_.size());
+  } else {
+    units_[unit_id].current_state_ = state;
   }
-  current_states_[unit_id] = state;
-  odometry_ready_[unit_id] = true;
+  
+  
 }
 
 void Prm::setActiveUnit(int unit_id){
@@ -375,7 +447,7 @@ bool Prm::sampleVertex(StateVec& state) {
 
   while (!found && while_thresh--){
       
-    random_sampler_.generate(current_vertices_[active_id_]->state, state);
+    random_sampler_.generate(units_[active_id_].current_vertex_->state, state);
 
     // Very fast check if the sampled point is inside the planning space.
     // This helps eliminate quickly points outside the sampling space.
@@ -442,7 +514,7 @@ bool Prm::checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end){
 }
 
 bool Prm::getTargetReachedSingle(int unit_id) {
-  return final_targets_reached_[unit_id];
+  return units_[unit_id].reached_final_target_;
 }
 
 int Prm::getActiveUnit(){

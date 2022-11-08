@@ -322,7 +322,7 @@ Visualization Manager:
       Displays:
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /rts_node/octomap_free
+          Marker Topic: /rimapp_node/octomap_free
           Name: Free
           Namespaces:
             {}
@@ -330,7 +330,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /rts_node/octomap_occupied
+          Marker Topic: /rimapp_node/octomap_occupied
           Name: Occupied
           Namespaces:
             {}
@@ -344,12 +344,12 @@ Visualization Manager:
           Enabled: true
           Name: VoxbloxMesh
           Queue Size: 10
-          Topic: /rts_node/mesh
+          Topic: /rimapp_node/mesh
           Unreliable: false
           Value: true
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /rts_node/occupied_nodes
+          Marker Topic: /rimapp_node/occupied_nodes
           Name: Occupied
           Namespaces:
             occupied_voxels: true
@@ -378,7 +378,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.05000000074505806
           Style: Flat Squares
-          Topic: /rts_node/tsdf_pointcloud
+          Topic: /rimapp_node/tsdf_pointcloud
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -406,7 +406,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /rts_node/octomap_occupied_post
+          Marker Topic: /rimapp_node/octomap_occupied_post
           Name: MarkerArray
           Namespaces:
             {}

@@ -26,7 +26,7 @@
 namespace search{
 namespace prm{
 
-struct Unit{
+struct unit{
   int id_;
   Vertex* current_vertex_;
   StateVec current_state_;
@@ -63,6 +63,9 @@ class Prm {
   bool getTargetReachedSingle(int unit_id);
 
   int getActiveUnit();
+
+  void hardReset(); // Reset graph
+  void softReset(); //Reinitialize planner but keep graph
 
   // Plan a path from current position to target pose
   Prm::GraphStatus planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path);
@@ -106,15 +109,10 @@ class Prm {
   // id of active robot to sample from 
   int active_id_;
 
-  // List of robot position vertices
-  std::vector<Vertex*> current_vertices_;
-  // List of robot states
-  std::vector<StateVec> current_states_;
-  // List of current robot waypoints
-  std::vector<Vertex*> current_waypoints_;
 
-  std::vector<bool> final_targets_reached_;
   // Query queue
+
+  std::vector<unit> units_;
   // make a msg struct with query info
     // id, start, end
   
@@ -124,6 +122,8 @@ class Prm {
   int planning_num_edges_max_;
 
   //---------------------FUNCTIONS----------------------
+
+  void addUnit(int unit_id);  
 
   bool sampleVertex(StateVec& state);
 

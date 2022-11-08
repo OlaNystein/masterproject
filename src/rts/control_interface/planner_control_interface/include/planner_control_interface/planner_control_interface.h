@@ -36,7 +36,7 @@
 #include "rrtstar_msgs/search.h"
 #include "rrtstar_msgs/pci_search.h"
 #include "rimapp_msgs/plan_path_single.h"
-#include "rimapp_msgs/pci_plan_path_single.srv"
+#include "rimapp_msgs/pci_plan_path_single.h"
 
 namespace search {
 
@@ -126,9 +126,7 @@ class PlannerControlInterface {
   bool rimappCallback(rimapp_msgs::pci_plan_path_single::Request &req,
                       rimapp_msgs::pci_plan_path_single::Response &res);
 
-  bool searchCallback(rrtstar_msgs::pci_search::Request &req,
-                      rrtstar_msgs::pci_search::Response &res);
-
+  
   bool triggerCallback(planner_msgs::pci_trigger::Request &req,
                        planner_msgs::pci_trigger::Response &res);
 
@@ -163,18 +161,15 @@ class PlannerControlInterface {
   int search_iteration_;
 
 
-  geometry_msgs::Pose current_target_;
-  bool target_reached_;
-
   ros::Time ttime;
   double total_time_;
-  void runSearch();
+ 
 
   //rimapp parameters
   bool rimapp_request_;
   geometry_msgs::Pose current_target_;
   bool target_reached_;
-  int active_id_
+  int active_id_;
   void runRimapp();
 
 };

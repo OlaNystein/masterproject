@@ -14,5 +14,6 @@
   <depend>interactive_markers</depend>
   <depend>std_srvs</depend>
   <depend>rrtstar_msgs</depend>
+  <depend>rimapp_msgs</depend>
 
 </package>
