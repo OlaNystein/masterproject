@@ -32,11 +32,14 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
   res.best_path.clear();
   ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. ", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z);
   prm_->setActiveUnit(req.unit_id);
-  ROS_WARN("bplanner");
+
   res.best_path = prm_->runPlanner(req.target_pose);
-  ROS_WARN("aplanner");
+ 
   if (res.best_path.size() < 1) {
     ROS_WARN("RIMAPP: No best path returned");
+  }
+  if (res.best_path.size() > 1){
+    ROS_WARN("RIMAPP: Best path found");
   }
   res.final_target_reached = prm_->getTargetReachedSingle(req.unit_id);
   return true;

@@ -123,6 +123,8 @@ class Prm {
 
   //---------------------FUNCTIONS----------------------
 
+  void addStartVertex();
+
   void addUnit(int unit_id);  
 
   bool sampleVertex(StateVec& state);

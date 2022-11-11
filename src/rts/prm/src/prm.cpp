@@ -17,6 +17,8 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     
     lazy_mode_ = false;
 
+    stat_.reset(new SampleStatistic());
+
  
 }
 
@@ -116,9 +118,7 @@ void Prm::initializeParams(){
 std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
   ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
   ros::spinOnce();
-  ROS_WARN("beforereset");
-  softReset();
-  ROS_WARN("afterreset");
+  addStartVertex();
   std::vector<geometry_msgs::Pose> best_path;
   units_[active_id_].reached_final_target_ = false;
   ROS_WARN("beforeplanpath");
@@ -149,20 +149,16 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_target_neighbours(0);
 
 
-  // Try to add current state as vertex in graph
-  Vertex* current_v = NULL;
-  ExpandGraphReport startRep;
-  expandGraph(roadmap_graph_, units_[active_id_].current_state_, startRep);
-  if (startRep.status == ExpandGraphStatus::kSuccess) {
-    ROS_INFO("Successfully added current posisition to tree to start pathplan");
-    units_[active_id_].current_vertex_= startRep.vertex_added;
-    current_v = units_[active_id_].current_vertex_;
-    stat_->init(current_v->state);
-  } else {
-    ROS_WARN("Could not add current position to tree");
-    return Prm::GraphStatus::ERR_KDTREE;
+  // failsafe to catch if robot is already at target
+  Eigen::Vector3d current_pos(units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
+  Eigen::Vector3d goal(target_pose.position.x, target_pose.position.y, target_pose.position.z);
+  ROS_INFO("rad: %f targrat: %f",abs(current_pos.norm() - goal.norm()) , random_sampling_params_->reached_target_radius);
+  if (abs(current_pos.norm() - goal.norm()) < random_sampling_params_->reached_target_radius) {
+    units_[active_id_].reached_final_target_ = true;
+    ROS_INFO("Unit %d already at target given", active_id_);
+    return Prm::GraphStatus::OK;
   }
-
+  // failsafe 
 
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
@@ -178,6 +174,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
   std::vector<Vertex*> target_neighbours;
 
+  stat_->init(units_[active_id_].current_vertex_->state);
 
   
   ROS_INFO("Current state: %f %f %f", units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
@@ -208,6 +205,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
         target_neighbours.push_back(rep.vertex_added);
         num_target_neighbours++;
+        units_[active_id_].reached_final_target_ = true;
 
         if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
           // stop samling if we have enough sampled points in target area
@@ -237,7 +235,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   std::vector<int> path_id_list;
-  roadmap_graph_->findShortestPaths(current_v->id, roadmap_graph_rep_);
+  roadmap_graph_->findShortestPaths(units_[active_id_].current_vertex_->id, roadmap_graph_rep_);
   // Get the shortest path to current waypoint, and collision check the path if in lazy mode
   if(lazy_mode_){
 
@@ -252,7 +250,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
           // edge is not collision free
           roadmap_graph_->removeEdge(v_start, v_end);
           ROS_WARN("Collision found in path, replanning");
-          roadmap_graph_->findShortestPaths(current_v->id, roadmap_graph_rep_);
+          roadmap_graph_->findShortestPaths(units_[active_id_].current_vertex_->id, roadmap_graph_rep_);
           break;
         }
         if (i == path_id_list.size()-1) {
@@ -268,6 +266,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   } else {
     // Get the shortest path to current waypoint
     roadmap_graph_->getShortestPath(units_[active_id_].current_waypoint_->id, roadmap_graph_rep_, false, path_id_list);
+    res = Prm::GraphStatus::OK;
   }
 
   // Creation of path data structure
@@ -313,6 +312,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
                       StateVec& new_state, ExpandGraphReport& rep){
   // Find nearest neighbour
   Vertex* nearest_vertex = NULL;
+  
   if (!roadmap_graph_->getNearestVertex(&new_state, &nearest_vertex)) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
     return;
@@ -321,11 +321,13 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     rep.status = ExpandGraphStatus::kErrorKdTree;
     return;
   }
+  
   // Check for collision of new connection plus some overshoot distance.
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
   Eigen::Vector3d direction(new_state[0] - origin[0], new_state[1] - origin[1],
                             new_state[2] - origin[2]);
+  
   double direction_norm = direction.norm();
   if (direction_norm > planning_params_.edge_length_max) {
     direction = planning_params_.edge_length_max * direction.normalized();
@@ -334,6 +336,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     rep.status = ExpandGraphStatus::kErrorShortEdge;
     return;
   }
+
   // Recalculate the distance.
   direction_norm = direction.norm();
   new_state[0] = origin[0] + direction[0];
@@ -362,7 +365,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     rep.vertex_added = new_vertex;
     roadmap_graph_->addEdge(new_vertex, nearest_vertex, direction_norm);
     ++rep.num_edges_added;
-
+    
     // add more edges to create graph
     std::vector<Vertex*> nearest_vertices;
     if (!roadmap_graph_->getNearestVertices(
@@ -376,7 +379,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
           nearest_vertices[i]->state[1] - origin[1],
           nearest_vertices[i]->state[2] - origin[2];
       double d_norm = direction.norm();
-
+      
       if ((d_norm > planning_params_.nearest_range_min) &&
           (d_norm < planning_params_.nearest_range_max)) {
         Eigen::Vector3d p_overshoot =
@@ -396,6 +399,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     }
     
   } else {
+    
     stat_->num_edges_fail++;
     if (stat_->num_edges_fail < 500) {
       std::vector<double> vtmp = {start_pos[0], start_pos[1], start_pos[2],
@@ -412,7 +416,12 @@ void Prm::addUnit(int unit_id){
   unit bot;
   bot.id_ = unit_id;
   bot.reached_final_target_ = false;
+
+
+
   units_.push_back(bot);
+
+    
 }
 
 void Prm::setState(StateVec& state, int unit_id){
@@ -420,7 +429,8 @@ void Prm::setState(StateVec& state, int unit_id){
     // add unit to unit list
     addUnit(unit_id);
     odometry_ready_.push_back(false);
-    
+
+
   }
   if (!odometry_ready_[unit_id]) {
     // First time receive the pose/odometry for planning purpose.
@@ -430,11 +440,20 @@ void Prm::setState(StateVec& state, int unit_id){
     units_[unit_id].current_state_ = state;
     odometry_ready_[unit_id] = true;
     ROS_WARN("Length of units vector: %d", units_.size());
+
   } else {
     units_[unit_id].current_state_ = state;
   }
-  
-  
+}
+
+void Prm::addStartVertex(){
+
+
+  Vertex* root_vertex = new Vertex(roadmap_graph_->generateVertexID(), units_[active_id_].current_state_);
+    
+  roadmap_graph_->addVertex(root_vertex);
+
+  units_[active_id_].current_vertex_ = root_vertex;
 }
 
 void Prm::setActiveUnit(int unit_id){
@@ -470,19 +489,23 @@ bool Prm::sampleVertex(StateVec& state) {
             global_space_params_.max_val.z() - 0.5 * robot_box_size_.z()) {
     continue;
     }
-
+    
         // Check if the voxel area is free
     if (map_manager_->getBoxStatus(Eigen::Vector3d(state[0], state[1], state[2])
        + robot_params_.center_offset, robot_box_size_, true) // True for stopping at unknown voxels
          == MapManager::VoxelStatus::kFree)  {  
+      found = true;
       
-      random_sampler_.pushSample(state, true);
+      random_sampler_.pushSample(state, found);
       
-      stat_->num_vertices_fail++;
       
+    } else {
+      found = false;
+      random_sampler_.pushSample(state, found);
     }
 
   }
+  
   return found;
 }
 
