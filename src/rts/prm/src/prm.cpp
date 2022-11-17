@@ -124,6 +124,9 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   ROS_WARN("beforeplanpath");
   Prm::GraphStatus status = planPath(target_pose, best_path);
   ROS_WARN("afterplanpath");
+  if (best_path.size() == 1) {
+    ROS_WARN("First x coordinate: %f", best_path[0].position.x);
+  }
   switch(status) {
     case Prm::GraphStatus::ERR_KDTREE:
       ROS_WARN("Error with the graph");
@@ -149,7 +152,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_target_neighbours(0);
 
 
-  // failsafe to catch if robot is already at target
+  // catch if robot is already at target
   Eigen::Vector3d current_pos(units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
   Eigen::Vector3d goal(target_pose.position.x, target_pose.position.y, target_pose.position.z);
   ROS_INFO("rad: %f targrat: %f",abs(current_pos.norm() - goal.norm()) , random_sampling_params_->reached_target_radius);
@@ -158,11 +161,19 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     ROS_INFO("Unit %d already at target given", active_id_);
     return Prm::GraphStatus::OK;
   }
-  // failsafe 
+ 
+
 
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
+
+  // catch if target is close enough to existing vertex
+
+
+
   units_[active_id_].current_waypoint_ = units_[active_id_].current_vertex_;
+  ROS_INFO("Current vertex: %f %f %f", units_[active_id_].current_vertex_->state[0], units_[active_id_].current_vertex_->state[1], units_[active_id_].current_vertex_->state[2]);
+
 
   Eigen::Vector3d dir_vec(units_[active_id_].current_state_[0] - target_state[0],
                           units_[active_id_].current_state_[1] - target_state[1],
@@ -179,50 +190,60 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   
   ROS_INFO("Current state: %f %f %f", units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
 
-  while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
-  (num_vertices_added < planning_num_vertices_max_) &&
-  (num_edges_added < planning_num_edges_max_)) {
+  if (roadmap_graph_->getNearestVertexInRange(&target_state, random_sampling_params_->reached_target_radius, &units_[active_id_].current_waypoint_)){
+    ROS_INFO("Currentwp: %d, x: %f, Parent: %d, children: %d", units_[active_id_].current_waypoint_->id, units_[active_id_].current_waypoint_->state.x(), units_[active_id_].current_waypoint_->parent->id, units_[active_id_].current_waypoint_->children[units_[active_id_].current_waypoint_->children.size()]->id);
+    ROS_INFO("Graph already contains target, waypoint updated.");
 
-    StateVec new_state;
-    if (!sampleVertex(new_state)) {
-      continue; // skip invalid sample
-    }
+    num_target_neighbours++;
+    
+  } else {
+    while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
+    (num_vertices_added < planning_num_vertices_max_) &&
+    (num_edges_added < planning_num_edges_max_)) {
 
-    ExpandGraphReport rep;
-    expandGraph(roadmap_graph_, new_state, rep);
+      StateVec new_state;
+      if (!sampleVertex(new_state)) {
+        continue; // skip invalid sample
+      }
 
-    if (rep.status == ExpandGraphStatus::kSuccess) {
+      ExpandGraphReport rep;
+      expandGraph(roadmap_graph_, new_state, rep);
 
-      num_vertices_added += rep.num_vertices_added;
-      num_edges_added += rep.num_edges_added;
-      // Check if state is inside target area
-      Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
-                                 new_state[1] - target_state[1],
-                                 new_state[2] - target_state[2]);
-      
-      // Check if sampled vertex is close enough to target area
-      if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
+      if (rep.status == ExpandGraphStatus::kSuccess) {
 
-        target_neighbours.push_back(rep.vertex_added);
-        num_target_neighbours++;
-        units_[active_id_].reached_final_target_ = true;
+        num_vertices_added += rep.num_vertices_added;
+        num_edges_added += rep.num_edges_added;
+        // Check if state is inside target area
+        Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
+                                  new_state[1] - target_state[1],
+                                  new_state[2] - target_state[2]);
+        
+        // Check if sampled vertex is close enough to target area
+        if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
+          ROS_WARN("TARGET REACHED SAMPLED");
+          target_neighbours.push_back(rep.vertex_added);
+          num_target_neighbours++;
+          units_[active_id_].reached_final_target_ = true;
+          //placeholder before adding pathsort
+          units_[active_id_].current_waypoint_ = target_neighbours[0];
+          //
+          if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
+            // stop samling if we have enough sampled points in target area
+            stop_sampling = true;
+          }
+        }
 
-        if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
-          // stop samling if we have enough sampled points in target area
-          stop_sampling = true;
+        if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
+          // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
+          best_dist = radius_vec.norm();
+          units_[active_id_].current_waypoint_ = rep.vertex_added;
         }
       }
 
-      if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
-        // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
-        best_dist = radius_vec.norm();
-        units_[active_id_].current_waypoint_ = rep.vertex_added;
+      if ((loop_count >= planning_params_.num_loops_cutoff) && 
+          (roadmap_graph_->getNumVertices() <= 1)) {
+        break;
       }
-    }
-
-    if ((loop_count >= planning_params_.num_loops_cutoff) && 
-        (roadmap_graph_->getNumVertices() <= 1)) {
-      break;
     }
   }
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
@@ -233,10 +254,12 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   if (num_target_neighbours < 1) {
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
   }
-
+  ROS_INFO("Currentv: %d, x: %f", units_[active_id_].current_vertex_->id, units_[active_id_].current_vertex_->state.x());
   std::vector<int> path_id_list;
+  roadmap_graph_rep_.reset();
   roadmap_graph_->findShortestPaths(units_[active_id_].current_vertex_->id, roadmap_graph_rep_);
   // Get the shortest path to current waypoint, and collision check the path if in lazy mode
+ 
   if(lazy_mode_){
 
     bool collision_free_path_found = false;
@@ -267,6 +290,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     // Get the shortest path to current waypoint
     roadmap_graph_->getShortestPath(units_[active_id_].current_waypoint_->id, roadmap_graph_rep_, false, path_id_list);
     res = Prm::GraphStatus::OK;
+ 
   }
 
   // Creation of path data structure
@@ -535,6 +559,9 @@ bool Prm::checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end){
   return false;
 
 }
+
+
+
 
 bool Prm::getTargetReachedSingle(int unit_id) {
   return units_[unit_id].reached_final_target_;

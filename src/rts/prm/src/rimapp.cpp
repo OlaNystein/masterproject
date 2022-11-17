@@ -35,7 +35,7 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
 
   res.best_path = prm_->runPlanner(req.target_pose);
  
-  if (res.best_path.size() < 1) {
+  if (res.best_path.size() <= 1) {
     ROS_WARN("RIMAPP: No best path returned");
   }
   if (res.best_path.size() > 1){

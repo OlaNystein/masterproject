@@ -74,6 +74,8 @@ class Prm {
 
   private:
   
+  
+
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
@@ -132,6 +134,7 @@ class Prm {
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
   bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
+
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
