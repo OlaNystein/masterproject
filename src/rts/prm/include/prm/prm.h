@@ -26,14 +26,6 @@
 namespace search{
 namespace prm{
 
-struct unit{
-  int id_;
-  Vertex* current_vertex_;
-  StateVec current_state_;
-  Vertex* current_waypoint_;
-  StateVec final_target_;
-  bool reached_final_target_;
-};
 
 
 class Prm {
@@ -44,6 +36,25 @@ class Prm {
     ERR_KDTREE,           // Could not get nearest neighbours from kdtree
     ERR_NO_FEASIBLE_PATH, // Could not find feasible path
     NOT_OK,               // Other error
+  };
+
+  enum UnitStatus {
+    UNINITIALIZED = 0,    // Unit is uninitialized
+    EMPTYGRAPH,           // The graph is empty
+    ONVERTEX,             // Unit is on vertex
+    NEARVERTEX,           // Unit is near vertex
+    DISCONNECTED,         // Unit is completely disconnected from graph
+    ERROR,                // Could not add state to graph
+  };
+
+  struct unit{
+    int id_;
+    Vertex* current_vertex_;
+    StateVec current_state_;
+    Vertex* current_waypoint_;
+    StateVec final_target_;
+    bool reached_final_target_;
+    Prm::UnitStatus status_;
   };
 
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
@@ -72,6 +83,12 @@ class Prm {
 
   std::vector<geometry_msgs::Pose> runPlanner(geometry_msgs::Pose& target_pose);
 
+  void expandGraphEdges(std::shared_ptr<GraphManager> graph_manager,
+                        Vertex* new_vertex, ExpandGraphReport& rep);
+  
+  bool connectStateToGraph(std::shared_ptr<GraphManager> graph,
+                              StateVec& cur_state, Vertex*& v_added,
+                              double dist_ignore_collision_check);
   private:
   
   
@@ -114,7 +131,7 @@ class Prm {
 
   // Query queue
 
-  std::vector<unit> units_;
+  std::vector<Prm::unit> units_;
   // make a msg struct with query info
     // id, start, end
   
@@ -124,6 +141,7 @@ class Prm {
   int planning_num_edges_max_;
 
   //---------------------FUNCTIONS----------------------
+  void detectUnitStatus(int unit_id);
 
   void addStartVertex();
 
@@ -134,6 +152,7 @@ class Prm {
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
   bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
+
 
   //list of robots with id, lets start with 1 robot
   //one common roadmap

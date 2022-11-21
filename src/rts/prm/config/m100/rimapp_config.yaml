@@ -127,6 +127,7 @@ PlanningParams:
   initial_planning_time: 2.0
   freespace_cloud_enable: true
 
+
 GeofenceParams:
   AreaList: ["GBack"]
   GLeft:

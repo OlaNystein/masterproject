@@ -118,15 +118,37 @@ void Prm::initializeParams(){
 std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
   ros::Duration(1.0).sleep();  // sleep to unblock the thread to get update
   ros::spinOnce();
-  addStartVertex();
+
   std::vector<geometry_msgs::Pose> best_path;
+  // Find status of active unit in relation to the graph
+  detectUnitStatus(active_id_);
+  Prm::UnitStatus unit_status = units_[active_id_].status_;
+
+  if (unit_status == Prm::UnitStatus::UNINITIALIZED){
+    ROS_WARN("Robot is uninitialized, some unknown error has happened");
+    return best_path;
+  }
+  if (unit_status == Prm::UnitStatus::ERROR){
+    ROS_WARN("Could not add state to graph");
+    return best_path;
+  }
+  if (unit_status == Prm::UnitStatus::EMPTYGRAPH){
+    ROS_INFO("Graph is empty, adding root vertex");
+    addStartVertex();
+  }
+  if (unit_status == Prm::UnitStatus::DISCONNECTED){
+    ROS_INFO("Unit is disconnected from graph, adding current state as vertex for new graph segment");
+    addStartVertex();
+  }
+  
   units_[active_id_].reached_final_target_ = false;
   ROS_WARN("beforeplanpath");
   Prm::GraphStatus status = planPath(target_pose, best_path);
   ROS_WARN("afterplanpath");
   if (best_path.size() == 1) {
-    ROS_WARN("First x coordinate: %f", best_path[0].position.x);
+    ROS_WARN("First x coordinateof short path: %f", best_path[0].position.x);
   }
+
   switch(status) {
     case Prm::GraphStatus::ERR_KDTREE:
       ROS_WARN("Error with the graph");
@@ -190,13 +212,13 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   
   ROS_INFO("Current state: %f %f %f", units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
 
-  if (roadmap_graph_->getNearestVertexInRange(&target_state, random_sampling_params_->reached_target_radius, &units_[active_id_].current_waypoint_)){
-    ROS_INFO("Currentwp: %d, x: %f, Parent: %d, children: %d", units_[active_id_].current_waypoint_->id, units_[active_id_].current_waypoint_->state.x(), units_[active_id_].current_waypoint_->parent->id, units_[active_id_].current_waypoint_->children[units_[active_id_].current_waypoint_->children.size()]->id);
-    ROS_INFO("Graph already contains target, waypoint updated.");
+  // if (roadmap_graph_->getNearestVertexInRange(&target_state, random_sampling_params_->reached_target_radius, &units_[active_id_].current_waypoint_)){
+  //   ROS_INFO("Currentwp: %d, x: %f, Parent: %d, children: %d", units_[active_id_].current_waypoint_->id, units_[active_id_].current_waypoint_->state.x(), units_[active_id_].current_waypoint_->parent->id, units_[active_id_].current_waypoint_->children[units_[active_id_].current_waypoint_->children.size()]->id);
+  //   ROS_INFO("Graph already contains target, waypoint updated.");
 
-    num_target_neighbours++;
+  //   num_target_neighbours++;
     
-  } else {
+  // } else {
     while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
     (num_vertices_added < planning_num_vertices_max_) &&
     (num_edges_added < planning_num_edges_max_)) {
@@ -245,7 +267,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
         break;
       }
     }
-  }
+  //}
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
@@ -437,11 +459,11 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
 }
 
 void Prm::addUnit(int unit_id){
-  unit bot;
+  Prm::unit bot;
   bot.id_ = unit_id;
   bot.reached_final_target_ = false;
 
-
+  bot.status_ = Prm::UnitStatus::UNINITIALIZED;
 
   units_.push_back(bot);
 
@@ -464,6 +486,7 @@ void Prm::setState(StateVec& state, int unit_id){
     units_[unit_id].current_state_ = state;
     odometry_ready_[unit_id] = true;
     ROS_WARN("Length of units vector: %d", units_.size());
+    
 
   } else {
     units_[unit_id].current_state_ = state;
@@ -478,11 +501,54 @@ void Prm::addStartVertex(){
   roadmap_graph_->addVertex(root_vertex);
 
   units_[active_id_].current_vertex_ = root_vertex;
+
+}
+
+void Prm::detectUnitStatus(int unit_id){
+  if (roadmap_graph_->getNumVertices() < 1) {
+    ROS_INFO("Graph is empty");
+    units_[active_id_].status_ = Prm::UnitStatus::EMPTYGRAPH;
+    return;
+  }
+  StateVec cur_state;
+  cur_state << units_[active_id_].current_state_.x(), units_[active_id_].current_state_.y(),
+                        units_[active_id_].current_state_.z(), units_[active_id_].current_state_.w();
+
+  if (roadmap_graph_->existVertexInRange(&(units_[active_id_].current_state_), planning_params_.edge_length_min)){
+    ROS_INFO("Unit %d is on a vertex", active_id_);
+    Vertex* nearest;
+    roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.edge_length_min, &nearest);
+    units_[active_id_].current_vertex_ = nearest;
+    units_[active_id_].status_ = Prm::UnitStatus::ONVERTEX;
+    return;
+  }
+  if (roadmap_graph_->existVertexInRange(&cur_state, planning_params_.nearest_range_max)){
+    ROS_INFO("Unit %d is near a vertex", active_id_);
+    std::vector<Vertex*> nearest;
+    roadmap_graph_->getNearestVertices(&cur_state, planning_params_.nearest_range_min, &nearest);
+    Vertex* link_vertex = NULL;
+    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[active_id_].current_state_, link_vertex, 0.5);
+    if (connected_to_graph){
+      units_[active_id_].current_vertex_ = link_vertex;
+      units_[active_id_].status_ = Prm::UnitStatus::NEARVERTEX;
+      ROS_INFO("Successfully added current state of unit %d to graph", active_id_);
+    } else {
+      units_[active_id_].status_ = Prm::UnitStatus::ERROR;
+      ROS_WARN("Could not successfully add current state of %d to graph", active_id_);
+    }
+    return;
+  } else {
+    units_[active_id_].status_ = Prm::UnitStatus::DISCONNECTED;
+    ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", active_id_);
+  }
+  
 }
 
 void Prm::setActiveUnit(int unit_id){
   active_id_ = unit_id;
 }
+
+
 
 bool Prm::sampleVertex(StateVec& state) {
   bool found = false;
@@ -560,8 +626,99 @@ bool Prm::checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end){
 
 }
 
+void Prm::expandGraphEdges(std::shared_ptr<GraphManager> graph_manager,
+                        Vertex* new_vertex, ExpandGraphReport& rep){
 
+  std::vector<Vertex*> nearest_vertices;
+  if (!graph_manager->getNearestVertices(&(new_vertex->state),
+                                         planning_params_.nearest_range,
+                                         &nearest_vertices)) {
+    rep.status = ExpandGraphStatus::kErrorKdTree;
+    return;
+  }
+  Eigen::Vector3d origin;
+  origin << new_vertex->state[0], new_vertex->state[1], new_vertex->state[2];
+  for (int i = 0; i < nearest_vertices.size(); ++i) {
+    Eigen::Vector3d direction;
+    direction << nearest_vertices[i]->state[0] - origin[0],
+        nearest_vertices[i]->state[1] - origin[1],
+        nearest_vertices[i]->state[2] - origin[2];
+    double d_norm = direction.norm();
+    if ((d_norm > planning_params_.edge_length_min) &&
+        (d_norm < planning_params_.edge_length_max)) {
+      Eigen::Vector3d p_overshoot =
+          direction / d_norm * planning_params_.edge_overshoot;
+      Eigen::Vector3d p_start =
+          origin + robot_params_.center_offset - p_overshoot;
+      Eigen::Vector3d p_end = origin + robot_params_.center_offset + direction;
+      if (nearest_vertices[i]->id != 0) p_end = p_end + p_overshoot;
+      if (MapManager::VoxelStatus::kFree ==
+          map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true)) {
+        graph_manager->addEdge(new_vertex, nearest_vertices[i], d_norm);
+        ++rep.num_edges_added;
+      }
+    }
+  }
+  rep.status = ExpandGraphStatus::kSuccess;
 
+}
+
+bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
+                              StateVec& cur_state, Vertex*& v_added,
+                              double dist_ignore_collision_check) {
+  Vertex* nearest_vertex = NULL;
+  if (!graph->getNearestVertex(&cur_state, &nearest_vertex)) return false;
+  if (nearest_vertex == NULL) return false;
+  Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
+                         nearest_vertex->state[2]);
+  Eigen::Vector3d direction(cur_state[0] - origin[0], cur_state[1] - origin[1],
+                            cur_state[2] - origin[2]);
+  double direction_norm = direction.norm();
+  bool connect_state_to_graph = true;
+  const double kDelta = 0.05;
+  if (direction_norm <= kDelta) {
+    // Add edges only from this vertex.
+    ExpandGraphReport rep;
+    expandGraphEdges(graph, nearest_vertex, rep);
+    v_added = nearest_vertex;
+  } else if (direction_norm <= std::max(dist_ignore_collision_check,
+                                        planning_params_.edge_length_min)) {
+    // Blindly add a link/vertex to the graph if small radius.
+    Vertex* new_vertex = new Vertex(graph->generateVertexID(), cur_state);
+    new_vertex->parent = nearest_vertex;
+    new_vertex->distance = nearest_vertex->distance + direction_norm;
+    graph->addVertex(new_vertex);
+    graph->addEdge(new_vertex, nearest_vertex, direction_norm);
+    // Add edges only from this vertex.
+    ExpandGraphReport rep;
+    expandGraphEdges(graph, new_vertex, rep);
+    v_added = new_vertex;
+  } else {
+    ROS_WARN("[GlobalGraph] Try to add current state to the graph.");
+    ExpandGraphReport rep;
+    expandGraph(graph, cur_state, rep);
+    if (rep.status == ExpandGraphStatus::kSuccess) {
+      ROS_WARN("[GlobalGraph] Added successfully.");
+      v_added = rep.vertex_added;
+    } else {
+      // Not implemented solution for this case yet.
+      connect_state_to_graph = false;
+      ROS_WARN("[GlobalGraph] Can not add current state to graph since: ");
+      switch (rep.status) {
+        case ExpandGraphStatus::kErrorKdTree:
+          ROS_WARN("kErrorKdTree.");
+          break;
+        case ExpandGraphStatus::kErrorCollisionEdge:
+          ROS_WARN("kErrorCollisionEdge.");
+          break;
+        case ExpandGraphStatus::kErrorShortEdge:
+          ROS_WARN("kErrorShortEdge.");
+          break;
+      }
+    }
+  }
+  return connect_state_to_graph;
+}
 
 bool Prm::getTargetReachedSingle(int unit_id) {
   return units_[unit_id].reached_final_target_;
