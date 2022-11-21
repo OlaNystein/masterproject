@@ -513,19 +513,15 @@ void Prm::detectUnitStatus(int unit_id){
   StateVec cur_state;
   cur_state << units_[active_id_].current_state_.x(), units_[active_id_].current_state_.y(),
                         units_[active_id_].current_state_.z(), units_[active_id_].current_state_.w();
-
-  if (roadmap_graph_->existVertexInRange(&(units_[active_id_].current_state_), planning_params_.edge_length_min)){
+  Vertex* nearest;
+  if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.edge_length_min, &nearest)){
     ROS_INFO("Unit %d is on a vertex", active_id_);
-    Vertex* nearest;
-    roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.edge_length_min, &nearest);
     units_[active_id_].current_vertex_ = nearest;
     units_[active_id_].status_ = Prm::UnitStatus::ONVERTEX;
     return;
   }
-  if (roadmap_graph_->existVertexInRange(&cur_state, planning_params_.nearest_range_max)){
+  if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.nearest_range_max, &nearest)){
     ROS_INFO("Unit %d is near a vertex", active_id_);
-    std::vector<Vertex*> nearest;
-    roadmap_graph_->getNearestVertices(&cur_state, planning_params_.nearest_range_min, &nearest);
     Vertex* link_vertex = NULL;
     bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[active_id_].current_state_, link_vertex, 0.5);
     if (connected_to_graph){
