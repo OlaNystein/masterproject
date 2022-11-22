@@ -120,6 +120,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   ros::spinOnce();
 
   std::vector<geometry_msgs::Pose> best_path;
+  best_path.clear();
   // Find status of active unit in relation to the graph
   detectUnitStatus(active_id_);
   Prm::UnitStatus unit_status = units_[active_id_].status_;
@@ -201,6 +202,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
                           units_[active_id_].current_state_[1] - target_state[1],
                           units_[active_id_].current_state_[2] - target_state[2]);
   double dir_dist = dir_vec.norm();
+  ROS_INFO("Dir dist %f", dir_dist);
   double best_dist = 10000000; //inf
   
   bool stop_sampling = false;
@@ -232,7 +234,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       expandGraph(roadmap_graph_, new_state, rep);
 
       if (rep.status == ExpandGraphStatus::kSuccess) {
-
+        ROS_INFO("expanded graph");
         num_vertices_added += rep.num_vertices_added;
         num_edges_added += rep.num_edges_added;
         // Check if state is inside target area
@@ -242,7 +244,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
         
         // Check if sampled vertex is close enough to target area
         if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
-          ROS_WARN("TARGET REACHED SAMPLED");
+          ROS_WARN("TARGET SAMPLED");
           target_neighbours.push_back(rep.vertex_added);
           num_target_neighbours++;
           units_[active_id_].reached_final_target_ = true;
@@ -254,9 +256,13 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
             stop_sampling = true;
           }
         }
-
+        ROS_INFO("ntn: %d", num_target_neighbours);
+        ROS_INFO("rad_vec: %f", radius_vec.norm());
+        ROS_INFO("dirdist: %f", dir_dist);
+        ROS_INFO("best_dist: %f", best_dist);
         if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
           // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
+          ROS_INFO("We got a better dist");
           best_dist = radius_vec.norm();
           units_[active_id_].current_waypoint_ = rep.vertex_added;
         }
@@ -507,38 +513,41 @@ void Prm::addStartVertex(){
 void Prm::detectUnitStatus(int unit_id){
   if (roadmap_graph_->getNumVertices() < 1) {
     ROS_INFO("Graph is empty");
-    units_[active_id_].status_ = Prm::UnitStatus::EMPTYGRAPH;
+    units_[unit_id].unit_status_ = Prm::StateStatus::EMPTYGRAPH;
     return;
   }
   StateVec cur_state;
-  cur_state << units_[active_id_].current_state_.x(), units_[active_id_].current_state_.y(),
-                        units_[active_id_].current_state_.z(), units_[active_id_].current_state_.w();
+  cur_state << units_[unit_id].current_state_.x(), units_[unit_id].current_state_.y(),
+                        units_[unit_id].current_state_.z(), units_[unit_id].current_state_.w();
   Vertex* nearest;
   if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.edge_length_min, &nearest)){
-    ROS_INFO("Unit %d is on a vertex", active_id_);
-    units_[active_id_].current_vertex_ = nearest;
-    units_[active_id_].status_ = Prm::UnitStatus::ONVERTEX;
+    ROS_INFO("Unit %d is on a vertex", unit_id);
+    units_[unit_id].current_vertex_ = nearest;
+    units_[unit_id].unit_status_ = Prm::StateStatus::ONVERTEX;
     return;
   }
   if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.nearest_range_max, &nearest)){
-    ROS_INFO("Unit %d is near a vertex", active_id_);
+    ROS_INFO("Unit %d is near a vertex", unit_id);
     Vertex* link_vertex = NULL;
-    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[active_id_].current_state_, link_vertex, 0.5);
+    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id].current_state_, link_vertex, 0.5);
     if (connected_to_graph){
-      units_[active_id_].current_vertex_ = link_vertex;
-      units_[active_id_].status_ = Prm::UnitStatus::NEARVERTEX;
-      ROS_INFO("Successfully added current state of unit %d to graph", active_id_);
+      units_[unit_id].current_vertex_ = link_vertex;
+      units_[unit_id].unit_status_ = Prm::StateStatus::NEARVERTEX;
+      ROS_INFO("Successfully added current state of unit %d to graph", unit_id);
     } else {
-      units_[active_id_].status_ = Prm::UnitStatus::ERROR;
-      ROS_WARN("Could not successfully add current state of %d to graph", active_id_);
+      units_[unit_id].unit_status_ = Prm::StateStatus::ERROR;
+      ROS_WARN("Could not successfully add current state of %d to graph", unit_id);
     }
     return;
   } else {
-    units_[active_id_].status_ = Prm::UnitStatus::DISCONNECTED;
-    ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", active_id_);
+    units_[unit_id].unit_status_ = Prm::StateStatus::DISCONNECTED;
+    ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", unit_id);
   }
   
 }
+
+
+
 
 void Prm::setActiveUnit(int unit_id){
   active_id_ = unit_id;

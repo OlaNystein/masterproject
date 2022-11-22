@@ -38,7 +38,7 @@ class Prm {
     NOT_OK,               // Other error
   };
 
-  enum UnitStatus {
+  enum StateStatus {
     UNINITIALIZED = 0,    // Unit is uninitialized
     EMPTYGRAPH,           // The graph is empty
     ONVERTEX,             // Unit is on vertex
@@ -54,7 +54,8 @@ class Prm {
     Vertex* current_waypoint_;
     StateVec final_target_;
     bool reached_final_target_;
-    Prm::UnitStatus status_;
+    Prm::StateStatus unit_status_;
+    Prm::StateStatus target_status_;
   };
 
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
