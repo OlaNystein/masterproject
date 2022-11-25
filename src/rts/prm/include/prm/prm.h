@@ -41,8 +41,7 @@ class Prm {
   enum StateStatus {
     UNINITIALIZED = 0,    // Unit is uninitialized
     EMPTYGRAPH,           // The graph is empty
-    ONVERTEX,             // Unit is on vertex
-    NEARVERTEX,           // Unit is near vertex
+    CONNECTED,            // Unit is near vertex
     DISCONNECTED,         // Unit is completely disconnected from graph
     ERROR,                // Could not add state to graph
   };
@@ -143,6 +142,8 @@ class Prm {
 
   //---------------------FUNCTIONS----------------------
   void detectUnitStatus(int unit_id);
+
+  void detectTargetStatus(int unit_id);
 
   void addStartVertex();
 

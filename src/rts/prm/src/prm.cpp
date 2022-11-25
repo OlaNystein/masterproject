@@ -123,21 +123,21 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   best_path.clear();
   // Find status of active unit in relation to the graph
   detectUnitStatus(active_id_);
-  Prm::UnitStatus unit_status = units_[active_id_].status_;
+  Prm::StateStatus unit_status = units_[active_id_].unit_status_;
 
-  if (unit_status == Prm::UnitStatus::UNINITIALIZED){
+  if (unit_status == Prm::StateStatus::UNINITIALIZED){
     ROS_WARN("Robot is uninitialized, some unknown error has happened");
     return best_path;
   }
-  if (unit_status == Prm::UnitStatus::ERROR){
+  if (unit_status == Prm::StateStatus::ERROR){
     ROS_WARN("Could not add state to graph");
     return best_path;
   }
-  if (unit_status == Prm::UnitStatus::EMPTYGRAPH){
+  if (unit_status == Prm::StateStatus::EMPTYGRAPH){
     ROS_INFO("Graph is empty, adding root vertex");
     addStartVertex();
   }
-  if (unit_status == Prm::UnitStatus::DISCONNECTED){
+  if (unit_status == Prm::StateStatus::DISCONNECTED){
     ROS_INFO("Unit is disconnected from graph, adding current state as vertex for new graph segment");
     addStartVertex();
   }
@@ -175,22 +175,13 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_target_neighbours(0);
 
 
-  // catch if robot is already at target
-  Eigen::Vector3d current_pos(units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
-  Eigen::Vector3d goal(target_pose.position.x, target_pose.position.y, target_pose.position.z);
-  ROS_INFO("rad: %f targrat: %f",abs(current_pos.norm() - goal.norm()) , random_sampling_params_->reached_target_radius);
-  if (abs(current_pos.norm() - goal.norm()) < random_sampling_params_->reached_target_radius) {
-    units_[active_id_].reached_final_target_ = true;
-    ROS_INFO("Unit %d already at target given", active_id_);
-    return Prm::GraphStatus::OK;
-  }
- 
-
 
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
 
-  // catch if target is close enough to existing vertex
+  units_[active_id_].final_target_ = target_state;
+
+  
 
 
 
@@ -201,11 +192,29 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   Eigen::Vector3d dir_vec(units_[active_id_].current_state_[0] - target_state[0],
                           units_[active_id_].current_state_[1] - target_state[1],
                           units_[active_id_].current_state_[2] - target_state[2]);
+
+
+  
   double dir_dist = dir_vec.norm();
   ROS_INFO("Dir dist %f", dir_dist);
   double best_dist = 10000000; //inf
+
+  // catch if robot is already at target
+  ROS_INFO("rad: %f targrat: %f",abs(dir_dist) , random_sampling_params_->reached_target_radius);
+  if (abs(dir_vec.norm()) < random_sampling_params_->reached_target_radius) {
+    units_[active_id_].reached_final_target_ = true;
+    ROS_INFO("Unit %d already at target given", active_id_);
+    return Prm::GraphStatus::OK;
+  }
+ 
   
   bool stop_sampling = false;
+  detectTargetStatus(active_id_);
+  if (units_[active_id_].target_status_ == Prm::StateStatus::CONNECTED){
+    ROS_INFO("Target already connected!");
+    stop_sampling = true;
+    num_target_neighbours++;
+  }
 
   std::vector<Vertex*> target_neighbours;
 
@@ -469,7 +478,8 @@ void Prm::addUnit(int unit_id){
   bot.id_ = unit_id;
   bot.reached_final_target_ = false;
 
-  bot.status_ = Prm::UnitStatus::UNINITIALIZED;
+  bot.target_status_ = Prm::StateStatus::UNINITIALIZED;
+  bot.unit_status_ = Prm::StateStatus::UNINITIALIZED;
 
   units_.push_back(bot);
 
@@ -523,7 +533,7 @@ void Prm::detectUnitStatus(int unit_id){
   if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.edge_length_min, &nearest)){
     ROS_INFO("Unit %d is on a vertex", unit_id);
     units_[unit_id].current_vertex_ = nearest;
-    units_[unit_id].unit_status_ = Prm::StateStatus::ONVERTEX;
+    units_[unit_id].unit_status_ = Prm::StateStatus::CONNECTED;
     return;
   }
   if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.nearest_range_max, &nearest)){
@@ -532,7 +542,7 @@ void Prm::detectUnitStatus(int unit_id){
     bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id].current_state_, link_vertex, 0.5);
     if (connected_to_graph){
       units_[unit_id].current_vertex_ = link_vertex;
-      units_[unit_id].unit_status_ = Prm::StateStatus::NEARVERTEX;
+      units_[unit_id].unit_status_ = Prm::StateStatus::CONNECTED;
       ROS_INFO("Successfully added current state of unit %d to graph", unit_id);
     } else {
       units_[unit_id].unit_status_ = Prm::StateStatus::ERROR;
@@ -542,6 +552,42 @@ void Prm::detectUnitStatus(int unit_id){
   } else {
     units_[unit_id].unit_status_ = Prm::StateStatus::DISCONNECTED;
     ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", unit_id);
+  }
+  
+}
+
+void Prm::detectTargetStatus(int unit_id){
+  if (roadmap_graph_->getNumVertices() < 1) {
+    ROS_INFO("Graph is empty");
+    units_[unit_id].target_status_ = Prm::StateStatus::EMPTYGRAPH;
+    return;
+  }
+  StateVec tar_state;
+  tar_state << units_[unit_id].final_target_.x(), units_[unit_id].final_target_.y(),
+                        units_[unit_id].final_target_.z(), units_[unit_id].final_target_.w();
+  Vertex* nearest;
+  if (roadmap_graph_->getNearestVertexInRange(&tar_state, random_sampling_params_->reached_target_radius, &nearest)){
+    ROS_INFO("Vertex exist in target %d area", unit_id);
+    units_[unit_id].current_waypoint_ = nearest;
+    units_[unit_id].target_status_ = Prm::StateStatus::CONNECTED;
+    return;
+  }
+  if (roadmap_graph_->getNearestVertexInRange(&tar_state, planning_params_.nearest_range_max, &nearest)){
+    ROS_INFO("Target %d is near a vertex", unit_id);
+    Vertex* link_vertex = NULL;
+    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id].final_target_, link_vertex, 0.5);
+    if (connected_to_graph){
+      units_[unit_id].current_waypoint_ = link_vertex;
+      units_[unit_id].target_status_ = Prm::StateStatus::CONNECTED;
+      ROS_INFO("Successfully added current target of unit %d to graph", unit_id);
+    } else {
+      units_[unit_id].target_status_ = Prm::StateStatus::ERROR;
+      ROS_WARN("Could not successfully add current target of %d to graph", unit_id);
+    }
+    return;
+  } else {
+    units_[unit_id].target_status_ = Prm::StateStatus::DISCONNECTED;
+    ROS_WARN("Target %d is too far from the established graph, start sampler to expand", unit_id);
   }
   
 }

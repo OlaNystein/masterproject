@@ -20,7 +20,7 @@
   <arg name="voxblox_config_file" default="$(find prm)/config/$(arg robot_name)/voxblox_sim_config.yaml"/>
   <arg name="map_config_file" default="$(arg voxblox_config_file)"/>
   <arg name="world_file" default="$(find planner_rts_sim)/worlds/pittsburgh_mine.world"/>
-
+  <!-- <arg name="world_file" default="$(find rotors_gazebo)/worlds/$(arg world_name).world"/>  -->
 
    <!-- Static TF -->
   <node pkg="tf" type="static_transform_publisher" name="tf_53" args="0 0 0 0 0 0 world navigation 100" />
@@ -67,6 +67,7 @@
     </node>
   </group>
 
+
   <arg name="odometry_topic" default="/$(arg robot_name)/ground_truth/odometry_throttled"/>
   <node name="pose_throttler" type="throttle" pkg="topic_tools" args="messages $(arg robot_name)/ground_truth/pose_with_covariance 10 /msf_core/pose" />
 
@@ -87,6 +88,8 @@
     <remap from="odometry" to="$(arg odometry_topic)"/>
     <rosparam command="load" file="$(arg pci_file)" />
   </node>
+
+
 
   
   <node pkg="rviz" type="rviz" name="rimapp_ui" output="screen" args="-d $(find prm)/config/rviz/m100_sim.rviz"/>
