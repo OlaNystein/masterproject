@@ -3,23 +3,44 @@
 namespace search{
 namespace prm{
 
+Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
+ reached_final_target_ = false;
+ target_status_ = Prm::StateStatus::UNINITIALIZED;
+ unit_status_ = Prm::StateStatus::UNINITIALIZED;
+}
+
+void Prm::unit::setSubscriber(std::string odom_prefix){
+
+  odometry_subscriber_ =
+      nh_.subscribe("m100_" + odom_prefix + "/ground_truth/odometry_throttled", 100, &unit::odometryCallback, this);
+}
+
+
 
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
   
-    visualization_ = new Visualization(nh_, nh_private_);
-    roadmap_graph_.reset(new GraphManager());
-    map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
-    nh_, nh_private_);
-    //TODO initialize odometry_ready to size of robotvector, currently one
-    odometry_ready_.push_back(false);
+  visualization_ = new Visualization(nh_, nh_private_);
+  roadmap_graph_.reset(new GraphManager());
+  map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
+  nh_, nh_private_);
+  //TODO initialize odometry_ready to size of robotvector, currently one
+  odometry_ready_.push_back(false);
 
-    active_id_ = 0;
-    
-    lazy_mode_ = false;
+  active_id_ = 0;
+  
+  lazy_mode_ = false;
 
-    stat_.reset(new SampleStatistic());
+  stat_.reset(new SampleStatistic());
 
- 
+  loadParams();
+
+  for (int i = 0; i < planning_params_.unit_odom_list.size(); i++){
+    unit u(nh_, nh_private_);
+    u.setID(i);
+    std::string odom_pre = planning_params_.unit_odom_list[i];
+    u.setSubscriber(odom_pre);
+    units_.push_back(u);
+  }
 }
 
 void Prm::hardReset(){
@@ -223,66 +244,60 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   
   ROS_INFO("Current state: %f %f %f", units_[active_id_].current_state_[0], units_[active_id_].current_state_[1], units_[active_id_].current_state_[2]);
 
-  // if (roadmap_graph_->getNearestVertexInRange(&target_state, random_sampling_params_->reached_target_radius, &units_[active_id_].current_waypoint_)){
-  //   ROS_INFO("Currentwp: %d, x: %f, Parent: %d, children: %d", units_[active_id_].current_waypoint_->id, units_[active_id_].current_waypoint_->state.x(), units_[active_id_].current_waypoint_->parent->id, units_[active_id_].current_waypoint_->children[units_[active_id_].current_waypoint_->children.size()]->id);
-  //   ROS_INFO("Graph already contains target, waypoint updated.");
 
-  //   num_target_neighbours++;
-    
-  // } else {
-    while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
+  while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
     (num_vertices_added < planning_num_vertices_max_) &&
     (num_edges_added < planning_num_edges_max_)) {
 
-      StateVec new_state;
-      if (!sampleVertex(new_state)) {
-        continue; // skip invalid sample
-      }
+    StateVec new_state;
+    if (!sampleVertex(new_state)) {
+      continue; // skip invalid sample
+    }
 
-      ExpandGraphReport rep;
-      expandGraph(roadmap_graph_, new_state, rep);
+    ExpandGraphReport rep;
+    expandGraph(roadmap_graph_, new_state, rep);
 
-      if (rep.status == ExpandGraphStatus::kSuccess) {
-        ROS_INFO("expanded graph");
-        num_vertices_added += rep.num_vertices_added;
-        num_edges_added += rep.num_edges_added;
-        // Check if state is inside target area
-        Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
-                                  new_state[1] - target_state[1],
-                                  new_state[2] - target_state[2]);
-        
-        // Check if sampled vertex is close enough to target area
-        if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
-          ROS_WARN("TARGET SAMPLED");
-          target_neighbours.push_back(rep.vertex_added);
-          num_target_neighbours++;
-          units_[active_id_].reached_final_target_ = true;
-          //placeholder before adding pathsort
-          units_[active_id_].current_waypoint_ = target_neighbours[0];
-          //
-          if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
-            // stop samling if we have enough sampled points in target area
-            stop_sampling = true;
-          }
-        }
-        ROS_INFO("ntn: %d", num_target_neighbours);
-        ROS_INFO("rad_vec: %f", radius_vec.norm());
-        ROS_INFO("dirdist: %f", dir_dist);
-        ROS_INFO("best_dist: %f", best_dist);
-        if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
-          // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
-          ROS_INFO("We got a better dist");
-          best_dist = radius_vec.norm();
-          units_[active_id_].current_waypoint_ = rep.vertex_added;
+    if (rep.status == ExpandGraphStatus::kSuccess) {
+      ROS_INFO("expanded graph");
+      num_vertices_added += rep.num_vertices_added;
+      num_edges_added += rep.num_edges_added;
+      // Check if state is inside target area
+      Eigen::Vector3d radius_vec(new_state[0] - target_state[0],
+                                new_state[1] - target_state[1],
+                                new_state[2] - target_state[2]);
+      
+      // Check if sampled vertex is close enough to target area
+      if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
+        ROS_WARN("TARGET SAMPLED");
+        target_neighbours.push_back(rep.vertex_added);
+        num_target_neighbours++;
+        units_[active_id_].reached_final_target_ = true;
+        //placeholder before adding pathsort
+        units_[active_id_].current_waypoint_ = target_neighbours[0];
+        //
+        if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
+          // stop samling if we have enough sampled points in target area
+          stop_sampling = true;
         }
       }
-
-      if ((loop_count >= planning_params_.num_loops_cutoff) && 
-          (roadmap_graph_->getNumVertices() <= 1)) {
-        break;
+      ROS_INFO("ntn: %d", num_target_neighbours);
+      ROS_INFO("rad_vec: %f", radius_vec.norm());
+      ROS_INFO("dirdist: %f", dir_dist);
+      ROS_INFO("best_dist: %f", best_dist);
+      if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
+        // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
+        ROS_INFO("We got a better dist");
+        best_dist = radius_vec.norm();
+        units_[active_id_].current_waypoint_ = rep.vertex_added;
       }
     }
-  //}
+
+    if ((loop_count >= planning_params_.num_loops_cutoff) && 
+        (roadmap_graph_->getNumVertices() <= 1)) {
+      break;
+    }
+  }
+
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
@@ -473,41 +488,7 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   rep.status = ExpandGraphStatus::kSuccess;
 }
 
-void Prm::addUnit(int unit_id){
-  Prm::unit bot;
-  bot.id_ = unit_id;
-  bot.reached_final_target_ = false;
 
-  bot.target_status_ = Prm::StateStatus::UNINITIALIZED;
-  bot.unit_status_ = Prm::StateStatus::UNINITIALIZED;
-
-  units_.push_back(bot);
-
-    
-}
-
-void Prm::setState(StateVec& state, int unit_id){
-  if (unit_id-1 > odometry_ready_.size()){
-    // add unit to unit list
-    addUnit(unit_id);
-    odometry_ready_.push_back(false);
-
-
-  }
-  if (!odometry_ready_[unit_id]) {
-    // First time receive the pose/odometry for planning purpose.
-    // Reset the voxblox map
-    ROS_WARN("Received the first odometry from unit %d", unit_id);
-
-    units_[unit_id].current_state_ = state;
-    odometry_ready_[unit_id] = true;
-    ROS_WARN("Length of units vector: %d", units_.size());
-    
-
-  } else {
-    units_[unit_id].current_state_ = state;
-  }
-}
 
 void Prm::addStartVertex(){
 

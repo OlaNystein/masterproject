@@ -761,6 +761,19 @@ bool PlanningParams::loadParams(std::string ns) {
     ROSPARAM_INFO(str_tmp);
   }
 
+  param_name = ns + "/unit_odom_list";
+  ros::param::get(param_name, parse_str_list);
+  if (parse_str_list.size() <= 0) {
+    ROSPARAM_WARN(param_name, "");
+  } else {
+    unit_odom_list = parse_str_list;
+    std::string str_tmp = "Unit odometry topics: ";
+    for (int i = 0; i < unit_odom_list.size(); ++i) {
+      str_tmp += unit_odom_list[i] + ", ";
+    }
+    ROSPARAM_INFO(str_tmp);
+  }
+
   param_name = ns + "/v_max";
   if (!ros::param::get(param_name, v_max)) {
     v_max = 0.2;

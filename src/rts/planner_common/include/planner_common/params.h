@@ -212,6 +212,7 @@ struct PlanningParams {
   std::vector<std::string> exp_sensor_list;
   std::vector<std::string> search_sensor_list;
   std::vector<std::string> scan_sensor_list;
+  std::vector<std::string> unit_odom_list;
   double v_max;
   double v_homing_max;
   double yaw_rate_max;

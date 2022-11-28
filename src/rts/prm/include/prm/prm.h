@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <eigen3/Eigen/Dense>
 
+#include <ros/ros.h>
+#include <nav_msgs/Path.h>
+
 #include <geometry_msgs/Polygon.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Pose.h>
@@ -47,6 +50,11 @@ class Prm {
   };
 
   struct unit{
+    ros::NodeHandle nh_;
+    ros::NodeHandle nh_private_;
+
+    unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+
     int id_;
     Vertex* current_vertex_;
     StateVec current_state_;
@@ -55,6 +63,25 @@ class Prm {
     bool reached_final_target_;
     Prm::StateStatus unit_status_;
     Prm::StateStatus target_status_;
+
+    void odometryCallback(const nav_msgs::Odometry& odo){
+      StateVec state;
+      state[0] = odo.pose.pose.position.x;
+      state[1] = odo.pose.pose.position.y;
+      state[2] = odo.pose.pose.position.z;
+      state[3] = tf::getYaw(odo.pose.pose.orientation);
+      // Directly updates the current state
+      current_state_ = state;
+    }
+
+    ros::Subscriber odometry_subscriber_;
+
+    void setSubscriber(std::string odom_prefix);
+
+    void setID(int id){
+      id_ = id;
+    }
+
   };
 
   Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
@@ -64,9 +91,6 @@ class Prm {
 
   //Load Parameters from the prm yaml config file
   bool loadParams();
-
-  // Set the current robot's state (e.g. from odometry msg)
-  void setState(StateVec& state, int unit_id);
 
   // Set the current active robot
   void setActiveUnit(int unit_id);
@@ -103,9 +127,9 @@ class Prm {
   Visualization* visualization_;
 
   // Parameters required for planning
-  SensorParams sensor_params_; // should be a list if different robots
+  SensorParams sensor_params_; // should be a list of different robots
   SensorParams free_frustum_params_;
-  RobotParams robot_params_; //should be a list if different robots
+  RobotParams robot_params_; //should be a list of different robots
   BoundedSpaceParams local_space_params_;
   PlanningParams planning_params_;
   RandomSamplingParams* random_sampling_params_;
@@ -146,8 +170,6 @@ class Prm {
   void detectTargetStatus(int unit_id);
 
   void addStartVertex();
-
-  void addUnit(int unit_id);  
 
   bool sampleVertex(StateVec& state);
 

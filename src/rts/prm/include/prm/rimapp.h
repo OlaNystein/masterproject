@@ -24,6 +24,7 @@ class RIMAPP {
   
   RIMAPP(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
+
   private:
 
   ros::NodeHandle nh_;
@@ -36,6 +37,8 @@ class RIMAPP {
   ros::Subscriber odometry_subscriber_;
 
   prm::Prm* prm_;
+
+
 
   bool planServiceCallback(
     rimapp_msgs::plan_path_single::Request& req,
