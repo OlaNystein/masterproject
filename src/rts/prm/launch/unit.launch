@@ -61,6 +61,7 @@
       <remap from="planner_server" to="prm" />
       <remap from="planner_homing_server" to="prm/homing" />
       <remap from="odometry" to="$(arg odometry_topic)"/>
+      <remap from="/$(arg robot_name)/prm/plan" to="/prm/plan"/>
       <rosparam command="load" file="$(arg pci_file)" />
     </node>
   </group>

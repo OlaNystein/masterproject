@@ -32,7 +32,10 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 
   stat_.reset(new SampleStatistic());
 
-  loadParams();
+  if (!loadParams()) {
+    ROS_ERROR("Can not load params. Shut down ROS node.");
+    ros::shutdown();
+  }
 
   for (int i = 0; i < planning_params_.unit_odom_list.size(); i++){
     unit u(nh_, nh_private_);
@@ -41,6 +44,7 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     u.setSubscriber(odom_pre);
     units_.push_back(u);
   }
+  ROS_INFO("PRM registered %d units", units_.size());
 }
 
 void Prm::hardReset(){
@@ -251,6 +255,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
     StateVec new_state;
     if (!sampleVertex(new_state)) {
+      ROS_WARN("Skip inv samp");
       continue; // skip invalid sample
     }
 
@@ -569,6 +574,7 @@ void Prm::detectTargetStatus(int unit_id){
   } else {
     units_[unit_id].target_status_ = Prm::StateStatus::DISCONNECTED;
     ROS_WARN("Target %d is too far from the established graph, start sampler to expand", unit_id);
+    return;
   }
   
 }

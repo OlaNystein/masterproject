@@ -37,8 +37,7 @@ PlannerControlInterface::PlannerControlInterface(
   rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("prm/plan");
 
 
-  while (!(rimapp_client_ = nh.serviceClient<rimapp_msgs::plan_path_single>(
-               "prm/plan", true))) {  // true for persistent
+  while (!(rimapp_client_.waitForExistence())) {  // true for persistent
     ROS_WARN("PCI: service rimapp_server is not available: waiting...");
     sleep(1);
   }
