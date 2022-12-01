@@ -48,7 +48,8 @@
 
   <node pkg="prm" type="rimapp_node" name="rimapp_node" output="screen" launch-prefix="$(arg launch_prefix)">
     <!-- <remap from="odometry" to="$(arg odometry_topic)" /> -->
-    <remap from="/pointcloud" to="/$(arg robot_name)/velodyne_points" />
+    <remap from="/pointcloud" to="/$(arg robot_name)_0/velodyne_points" />
+    <remap from="/pointcloud" to="/$(arg robot_name)_1/velodyne_points" />
     <rosparam command="load" file="$(arg rimapp_config_file)" />
     <rosparam command="load" file="$(arg map_config_file)" />
   </node>
