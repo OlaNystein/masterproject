@@ -32,6 +32,7 @@
   <depend>cv_bridge</depend>
   <depend>voxblox_ros</depend>
   <depend>planner_common</depend>
+  <depend>topic_tools</depend>
 
   
 

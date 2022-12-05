@@ -46,15 +46,11 @@
     uri: git@github.com:unr-arl/volumetric_mapping.git
     version: gbp_dev
 
-#EXPLORATION
+# RIMAPP
 - git:
-    local-name: src/exploration/gbplanner_ros/
-    uri: git@github.com:unr-arl/gbplanner_ros.git
-    version: dev/noetic
-- git:
-    local-name: src/exploration/pci_mav/
-    uri: git@github.com:unr-arl/pci_mav.git
-    version: master
+    local-name: src/rts/topic_tools/
+    uri: git@github.com:ros/ros_comm.git
+    version: noetic-devel
 
 # UI
 
