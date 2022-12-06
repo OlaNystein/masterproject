@@ -6,20 +6,24 @@ namespace prm{
 
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
   
-    visualization_ = new Visualization(nh_, nh_private_);
-    roadmap_graph_.reset(new GraphManager());
-    map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
-    nh_, nh_private_);
-    //TODO initialize odometry_ready to size of robotvector, currently one
-    odometry_ready_.push_back(false);
+  visualization_ = new Visualization(nh_, nh_private_);
+  roadmap_graph_.reset(new GraphManager());
+  map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
+  nh_, nh_private_);
+  //TODO initialize odometry_ready to size of robotvector, currently one
+  odometry_ready_.push_back(false);
 
-    active_id_ = 0;
+  active_id_ = 0;
+  
+  lazy_mode_ = false;
+
+  stat_.reset(new SampleStatistic());
+
+  if (!loadParams()) {
+    ROS_ERROR("Can not load params. Shut down PRM node.");
+    ros::shutdown();
+  }
     
-    lazy_mode_ = false;
-
-    stat_.reset(new SampleStatistic());
-
- 
 }
 
 void Prm::hardReset(){
