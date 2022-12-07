@@ -33,7 +33,7 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
   //
   ROS_INFO("Single unit planner service reached");
   res.best_path.clear();
-  ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. ", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z);
+  ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. id: %d", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z, req.unit_id);
   prm_->setActiveUnit(req.unit_id);
 
   res.best_path = prm_->runPlanner(req.target_pose);

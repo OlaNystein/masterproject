@@ -155,7 +155,7 @@ class Prm {
 
   // Query queue
 
-  std::vector<Prm::unit> units_;
+  std::vector<Prm::unit*> units_;
   // make a msg struct with query info
     // id, start, end
   
@@ -176,6 +176,8 @@ class Prm {
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
   bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
+
+  void printUnit(int unit_id);
 
 
   //list of robots with id, lets start with 1 robot

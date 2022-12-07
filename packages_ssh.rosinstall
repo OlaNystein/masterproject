@@ -48,7 +48,7 @@
 
 # RIMAPP
 - git:
-    local-name: src/rts/topic_tools/
+    local-name: src/misc/topic_tools/
     uri: git@github.com:ros/ros_comm.git
     version: noetic-devel
 
