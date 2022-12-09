@@ -63,7 +63,7 @@
       <rosparam command="load" file="$(arg pci_file)" />
     </node>
 
-    <node pkg="topic_tools" type="relay" name="pointcloud_relay_$(arg i)" args="/$(arg robot_name)/velodyne_points /$(arg mav_name)/velodyne_points"/>
+
 
   </group>
 

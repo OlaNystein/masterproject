@@ -13,6 +13,8 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Pose.h>
 
+#include <sensor_msgs/point_cloud2_iterator.h>
+
 #include "kdtree/kdtree.h"
 
 #include "prm/prm_rviz.h"
@@ -63,6 +65,10 @@ class Prm {
     bool reached_final_target_;
     Prm::StateStatus unit_status_;
     Prm::StateStatus target_status_;
+    double pcl_clear_radius_;
+
+    const std::vector<Prm::unit*>* units_for_pcl_;
+    void setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl);
 
     void odometryCallback(const nav_msgs::Odometry& odo){
       StateVec state;
@@ -74,12 +80,23 @@ class Prm {
       current_state_ = state;
     }
 
-    ros::Subscriber odometry_subscriber_;
+    
 
-    void setSubscriber(std::string odom_prefix);
+    ros::Subscriber odometry_sub_;
+    ros::Subscriber pointcloud_sub_;
+
+    ros::Publisher pointcloud_pub_;
+
+    void pclCallback(const sensor_msgs::PointCloud2& pcl);
+    void setOdomSubscriber(std::string odom_prefix);
+    void setPclSubscriber(std::string pcl_prefix);
 
     void setID(int id){
       id_ = id;
+    }
+
+    void setClearRad(double clear_rad){
+      pcl_clear_radius_ = clear_rad;
     }
 
   };

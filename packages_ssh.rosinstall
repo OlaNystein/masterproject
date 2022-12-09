@@ -46,12 +46,6 @@
     uri: git@github.com:unr-arl/volumetric_mapping.git
     version: gbp_dev
 
-# RIMAPP
-- git:
-    local-name: src/misc/topic_tools/
-    uri: git@github.com:ros/ros_comm.git
-    version: noetic-devel
-
 # UI
 
 # sim

@@ -7,14 +7,46 @@ Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): n
  reached_final_target_ = false;
  target_status_ = Prm::StateStatus::UNINITIALIZED;
  unit_status_ = Prm::StateStatus::UNINITIALIZED;
+ pointcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("m100/velodyne_points", 1000);
 }
 
-void Prm::unit::setSubscriber(std::string odom_prefix){
-  odometry_subscriber_ =
+void Prm::unit::setOdomSubscriber(std::string odom_prefix){
+  odometry_sub_ =
       nh_.subscribe("m100_" + odom_prefix + "/ground_truth/odometry_throttled", 100, &unit::odometryCallback, this);
 }
 
+void Prm::unit::setPclSubscriber(std::string pcl_prefix){
+  pointcloud_sub_ = nh_.subscribe("m100_" + pcl_prefix + "/velodyne_points", 100, &unit::pclCallback, this);
+}
 
+void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
+  units_for_pcl_ = &units_for_pcl;
+}
+
+void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
+  sensor_msgs::PointCloud2 pcl_filtered = pcl;
+  // Iterate through pointcloud
+  for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
+    float pcl_x = it[0];
+    float pcl_y = it[1];
+    float pcl_z = it[2];
+    
+    // Iterate through units to remove points around them
+    for (int i = 0; i < (*units_for_pcl_).size(); i++){
+      float distance = sqrt(pow(pcl_x - (*units_for_pcl_)[i]->current_state_[0], 2) + pow(pcl_y - (*units_for_pcl_)[i]->current_state_[1], 2)
+                      + pow(pcl_z - (*units_for_pcl_)[i]->current_state_[2], 2));
+
+      if (distance < 1.5*pcl_clear_radius_){
+        // Clear points around robots
+        it[0] = std::numeric_limits<float>::quiet_NaN();
+        it[1] = std::numeric_limits<float>::quiet_NaN();
+        it[2] = std::numeric_limits<float>::quiet_NaN();
+      }
+    }
+  }
+
+  pointcloud_pub_.publish(pcl_filtered);
+}
 
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
 
@@ -41,7 +73,14 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     unit* u = new unit(nh_, nh_private_);
     u->setID(i);
     std::string odom_pre = planning_params_.unit_odom_list[i];
-    u->setSubscriber(odom_pre);
+    u->setOdomSubscriber(odom_pre);
+    u->setPclSubscriber(odom_pre);
+    u->setUnitPtr(units_);
+
+    double clear_rad = robot_box_size_.norm();
+    ROS_INFO("clear rad: %f", clear_rad);
+    u->setClearRad(clear_rad);
+
     units_.push_back(u);
   }
   ROS_INFO("PRM registered %d units", units_.size());
@@ -132,7 +171,7 @@ bool Prm::loadParams(){
 }
 
 void Prm::initializeParams(){
-  random_sampler_.setParams(local_space_params_, global_space_params_);
+  random_sampler_.setParams(local_space_params_, local_space_params_);
 
   // Precompute robot box size for planning
   robot_params_.getPlanningSize(robot_box_size_);
@@ -150,6 +189,11 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
 
   detectUnitStatus(active_id_);
   Prm::StateStatus unit_status = units_[active_id_]->unit_status_;
+
+  map_manager_->augmentFreeBox(
+    Eigen::Vector3d(units_[active_id_]->current_state_[0],units_[active_id_]->current_state_[1],units_[active_id_]->current_state_[2]) +
+      robot_params_.center_offset,
+      robot_box_size_);
 
 
   if (unit_status == Prm::StateStatus::UNINITIALIZED){
@@ -170,9 +214,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   }
   
   units_[active_id_]->reached_final_target_ = false;
-  ROS_WARN("beforeplanpath");
   Prm::GraphStatus status = planPath(target_pose, best_path);
-  ROS_WARN("afterplanpath");
   if (best_path.size() == 1) {
     ROS_WARN("First x coordinateof short path: %f", best_path[0].position.x);
   }
@@ -257,7 +299,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
     StateVec new_state;
     if (!sampleVertex(new_state)) {
-      ROS_WARN("Skip inv samp");
       continue; // skip invalid sample
     }
 
@@ -293,7 +334,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       ROS_INFO("best_dist: %f", best_dist);
       if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
         // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
-        ROS_INFO("We got a better dist");
         best_dist = radius_vec.norm();
         units_[active_id_]->current_waypoint_ = rep.vertex_added;
       }
@@ -398,28 +438,29 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   
   if (!roadmap_graph_->getNearestVertex(&new_state, &nearest_vertex)) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
+
     return;
   }
   if (nearest_vertex == NULL) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
+
     return;
   }
-  
   // Check for collision of new connection plus some overshoot distance.
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
   Eigen::Vector3d direction(new_state[0] - origin[0], new_state[1] - origin[1],
                             new_state[2] - origin[2]);
-  
   double direction_norm = direction.norm();
+  
   if (direction_norm > planning_params_.edge_length_max) {
     direction = planning_params_.edge_length_max * direction.normalized();
   } else if ((direction_norm <= planning_params_.edge_length_min)) {
     // Should not add short edge.
     rep.status = ExpandGraphStatus::kErrorShortEdge;
+    ROS_INFO("Short edge");
     return;
   }
-
   // Recalculate the distance.
   direction_norm = direction.norm();
   new_state[0] = origin[0] + direction[0];
@@ -433,12 +474,14 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   if (nearest_vertex->id != 0) start_pos = start_pos - overshoot_vec;
   Eigen::Vector3d end_pos =
       origin + robot_params_.center_offset + direction + overshoot_vec;
-
   // Check collision if lazy mode is not activated
-  if (MapManager::VoxelStatus::kFree ==
-      map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, true) || lazy_mode_) {
+  
+  
+  if ( MapManager::VoxelStatus::kFree ==
+        map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, true) || lazy_mode_) {
     Vertex* new_vertex =
         new Vertex(roadmap_graph_->generateVertexID(), new_state);
+        
     // Form a tree as the first step.
     new_vertex->parent = nearest_vertex;
     new_vertex->distance = nearest_vertex->distance + direction_norm;
@@ -501,7 +544,12 @@ void Prm::addStartVertex(){
 
 
   Vertex* root_vertex = new Vertex(roadmap_graph_->generateVertexID(), units_[active_id_]->current_state_);
-    
+  
+  map_manager_->augmentFreeBox(
+    Eigen::Vector3d(root_vertex->state[0], root_vertex->state[1], root_vertex->state[2]) +
+        robot_params_.center_offset,
+    robot_box_size_);
+
   roadmap_graph_->addVertex(root_vertex);
 
   units_[active_id_]->current_vertex_ = root_vertex;
@@ -602,35 +650,31 @@ bool Prm::sampleVertex(StateVec& state) {
     // This helps eliminate quickly points outside the sampling space.
     if (state.x() + robot_params_.center_offset.x() <
         global_space_params_.min_val.x() + 0.5 * robot_box_size_.x()) {
-          ROS_INFO("1");
     continue;
     } else if (state.y() + robot_params_.center_offset.y() <
             global_space_params_.min_val.y() + 0.5 * robot_box_size_.y()) {
-              ROS_INFO("2");
     continue;
     } else if (state.z() + robot_params_.center_offset.z() <
             global_space_params_.min_val.z() + 0.5 * robot_box_size_.z()) {
-              ROS_INFO("3");
     continue;
     } else if (state.x() + robot_params_.center_offset.x() >
             global_space_params_.max_val.x() - 0.5 * robot_box_size_.x()) {
-    ROS_INFO("4");
     continue;
     } else if (state.y() + robot_params_.center_offset.y() >
             global_space_params_.max_val.y() - 0.5 * robot_box_size_.y()) {
-              ROS_INFO("5");
     continue;
     } else if (state.z() + robot_params_.center_offset.z() >
             global_space_params_.max_val.z() - 0.5 * robot_box_size_.z()) {
-              ROS_INFO("x: %f, y: %f, z: %f", state.x(), state.y(), state.z());
-              ROS_INFO("glbl: %f, rbx: %f", global_space_params_.max_val.z(), 0.5 * robot_box_size_.z() );
     continue;
     }
+    //ROS_INFO("x: %f, y: %f, z: %f", state.x(), state.y(), state.z());
+
         // Check if the voxel area is free
     if (map_manager_->getBoxStatus(Eigen::Vector3d(state[0], state[1], state[2])
        + robot_params_.center_offset, robot_box_size_, true) // True for stopping at unknown voxels
          == MapManager::VoxelStatus::kFree)  {  
       found = true;
+      ROS_INFO("FOund");
       random_sampler_.pushSample(state, found);
       
       

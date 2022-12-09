@@ -8,7 +8,7 @@
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="debug" default="false"/>
   <arg name="rviz_en" default="true" />
-  <arg name="gui" default="true"/>
+  <arg name="gui" default="false"/>
   <arg name="paused" default="false"/>
   <arg name="launch_prefix" default=""/> <!-- gdb -ex run //args   gnome-terminal -x gdb-->
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
@@ -37,7 +37,7 @@
 
   <group if="$(eval ceil( arg('n')/( arg('n') + 1 ) ) )">
     <include file="$(find prm)/launch/unit.launch">
-        <arg name="n" value="$(arg n)"/>
+        <arg name="n" value="$(eval arg('n') - 1)"/>
         <arg name="i" value="0"/>
         <arg name="mav_name" value="$(arg mav_name)"/>
         <arg name="enable_logging" value="$(arg enable_logging)"/>
