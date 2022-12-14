@@ -36,6 +36,8 @@ PlannerControlInterface::PlannerControlInterface(
   
   rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("prm/plan");
 
+  // pci_surveillance_server_ = nh_serviceClient<rimapp_msgs::
+
 
   while (!(rimapp_client_.waitForExistence())) {  // true for persistent
     ROS_WARN("PCI: service rimapp_server is not available: waiting...");
@@ -167,7 +169,7 @@ void PlannerControlInterface::run() {
         if (target_reached_){
           rimapp_request_ = false;
         }
-      }
+      } 
     } else if (pci_status == PCIManager::PCIStatus::kError) {
       // Reset everything to manual then wait for operator.
       resetPlanner();

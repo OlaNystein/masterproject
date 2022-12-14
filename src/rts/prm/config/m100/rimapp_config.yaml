@@ -126,7 +126,6 @@ PlanningParams:
   proximity_to_waypoint: 2.0 #how close to waypoint when starting planning of next segment
   initial_planning_time: 2.0
   freespace_cloud_enable: true
-  unit_odom_list: ["0", "1", "2", "3", "4", "5"]
 
 
 GeofenceParams:

@@ -13,6 +13,7 @@ add_service_files(
   FILES
   plan_path_single.srv
   pci_plan_path_single.srv
+  upi_planner.srv
 )
 
 

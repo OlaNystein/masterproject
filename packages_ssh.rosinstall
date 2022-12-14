@@ -46,7 +46,10 @@
     uri: git@github.com:unr-arl/volumetric_mapping.git
     version: gbp_dev
 
-# UI
+# Corridors
+- git:
+    local-name: src/misc/DecompROS/
+    uri: git@github.com:sikang/DecompROS.git
 
 # sim
 - git:

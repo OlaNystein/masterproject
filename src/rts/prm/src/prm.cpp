@@ -25,6 +25,7 @@ void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
 
 void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
   sensor_msgs::PointCloud2 pcl_filtered = pcl;
+
   // Iterate through pointcloud
   for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
     float pcl_x = it[0];
@@ -69,10 +70,13 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     ros::shutdown();
   }
 
-  for (int i = 0; i < planning_params_.unit_odom_list.size(); i++){
+
+
+  for (int i = 0; i <= num_robots_; i++){
     unit* u = new unit(nh_, nh_private_);
     u->setID(i);
-    std::string odom_pre = planning_params_.unit_odom_list[i];
+
+    std::string odom_pre = std::to_string(i);
     u->setOdomSubscriber(odom_pre);
     u->setPclSubscriber(odom_pre);
     u->setUnitPtr(units_);
@@ -161,6 +165,8 @@ bool Prm::loadParams(){
 
   if (!robot_dynamics_params_.loadParams(ns + "/RobotDynamics")) return false;
 
+  nh_.getParam(ns + "/num_robots", num_robots_);
+
   random_sampling_params_ = new RandomSamplingParams();
 
   planning_params_.v_max = robot_dynamics_params_.v_max;
@@ -218,7 +224,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   if (best_path.size() == 1) {
     ROS_WARN("First x coordinateof short path: %f", best_path[0].position.x);
   }
-
+  visualization_->visualizeRefPath(best_path);
   switch(status) {
     case Prm::GraphStatus::ERR_KDTREE:
       ROS_WARN("Error with the graph");
@@ -244,7 +250,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_target_neighbours(0);
 
 
-
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
 
@@ -265,11 +270,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
   
   double dir_dist = dir_vec.norm();
-  ROS_INFO("Dir dist %f", dir_dist);
   double best_dist = 10000000; //inf
 
   // catch if robot is already at target
-  ROS_INFO("rad: %f targrat: %f",abs(dir_dist) , random_sampling_params_->reached_target_radius);
   if (abs(dir_vec.norm()) < random_sampling_params_->reached_target_radius) {
     units_[active_id_]->reached_final_target_ = true;
     ROS_INFO("Unit %d already at target given", active_id_);
@@ -328,10 +331,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
           stop_sampling = true;
         }
       }
-      ROS_INFO("ntn: %d", num_target_neighbours);
-      ROS_INFO("rad_vec: %f", radius_vec.norm());
-      ROS_INFO("dirdist: %f", dir_dist);
-      ROS_INFO("best_dist: %f", best_dist);
       if ((num_target_neighbours < 1) && (radius_vec.norm() < dir_dist) && (radius_vec.norm() < best_dist)) {
         // if no points in target area is sampled, we go to the point closest to the target in euclidean distance
         best_dist = radius_vec.norm();
@@ -418,10 +417,10 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   visualization_->visualizeSampler(random_sampler_);
-  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
-
+  //visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_->visualizeGraph(roadmap_graph_);
+    ROS_WARN("viz graph");
   } else {
     visualization_->visualizeFailedEdges(stat_);
     ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
@@ -458,7 +457,6 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   } else if ((direction_norm <= planning_params_.edge_length_min)) {
     // Should not add short edge.
     rep.status = ExpandGraphStatus::kErrorShortEdge;
-    ROS_INFO("Short edge");
     return;
   }
   // Recalculate the distance.
@@ -674,7 +672,6 @@ bool Prm::sampleVertex(StateVec& state) {
        + robot_params_.center_offset, robot_box_size_, true) // True for stopping at unknown voxels
          == MapManager::VoxelStatus::kFree)  {  
       found = true;
-      ROS_INFO("FOund");
       random_sampler_.pushSample(state, found);
       
       

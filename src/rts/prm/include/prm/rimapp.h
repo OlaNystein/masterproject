@@ -17,6 +17,8 @@
 
 #include <nav_msgs/Path.h>
 
+#include <prm/upi.h>
+
 namespace search {
 
 class RIMAPP {
@@ -38,6 +40,7 @@ class RIMAPP {
 
   prm::Prm* prm_;
 
+  Upi* upi_;
 
 
   bool planServiceCallback(

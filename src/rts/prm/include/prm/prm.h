@@ -1,4 +1,4 @@
-#ifndef PRM_H
+#ifndef PRM_H_
 #define PRM_H_
 
 #include <fstream>
@@ -169,7 +169,7 @@ class Prm {
   // id of active robot to sample from 
   int active_id_;
 
-
+  int num_robots_;
   // Query queue
 
   std::vector<Prm::unit*> units_;

@@ -35,6 +35,8 @@
     <arg name="verbose" value="$(arg verbose)"/>
   </include>
 
+
+
   <group if="$(eval ceil( arg('n')/( arg('n') + 1 ) ) )">
     <include file="$(find prm)/launch/unit.launch">
         <arg name="n" value="$(eval arg('n') - 1)"/>
@@ -51,6 +53,7 @@
     <remap from="/pointcloud" to="/$(arg robot_name)/velodyne_points" />
     <rosparam command="load" file="$(arg rimapp_config_file)" />
     <rosparam command="load" file="$(arg map_config_file)" />
+    <param name="num_robots" type="int" value="$(arg n)"/>
   </node>
 
 

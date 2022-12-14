@@ -78,6 +78,7 @@ class PlannerControlInterface {
   ros::ServiceClient planner_geofence_client_;
   ros::ServiceClient planner_set_exp_mode_client_;
   
+  ros::ServiceServer pci_surveillance_server_;
   ros::ServiceServer pci_rimapp_server_;
   ros::ServiceServer pci_search_server_;
   ros::ServiceServer pci_server_;
@@ -167,6 +168,7 @@ class PlannerControlInterface {
 
   //rimapp parameters
   bool rimapp_request_;
+  bool stop_request_;
   geometry_msgs::Pose current_target_;
   bool target_reached_;
   int active_id_;

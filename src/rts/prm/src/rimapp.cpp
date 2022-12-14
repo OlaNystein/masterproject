@@ -5,7 +5,6 @@ namespace search {
 
   RIMAPP::RIMAPP(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): 
     nh_(nh), nh_private_(nh_private) {
-  ROS_WARN("Salud");
   prm_ = new prm::Prm(nh, nh_private);
   ROS_WARN("PRM CREATED");
   if(!(prm_->loadParams())) {
@@ -13,6 +12,7 @@ namespace search {
     ros::shutdown();
   }
 
+  upi_ = new Upi(nh, nh_private);
   
   plan_service_ = nh_.advertiseService("prm/plan", &RIMAPP::planServiceCallback, this);
   ROS_WARN("rimapp service advertised");
