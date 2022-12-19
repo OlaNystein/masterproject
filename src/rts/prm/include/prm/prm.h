@@ -144,9 +144,9 @@ class Prm {
   Visualization* visualization_;
 
   // Parameters required for planning
-  SensorParams sensor_params_; // should be a list of different robots
+  SensorParams sensor_params_; 
   SensorParams free_frustum_params_;
-  RobotParams robot_params_; //should be a list of different robots
+  RobotParams robot_params_; 
   BoundedSpaceParams local_space_params_;
   PlanningParams planning_params_;
   RandomSamplingParams* random_sampling_params_;

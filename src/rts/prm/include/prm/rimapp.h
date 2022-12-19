@@ -42,15 +42,16 @@ class RIMAPP {
 
   Upi* upi_;
 
+  std::vector<geometry_msgs::Pose> target_queue_;
+
+  void runRimapp();
+
 
   bool planServiceCallback(
     rimapp_msgs::plan_path_single::Request& req,
     rimapp_msgs::plan_path_single::Response& res);
 
-  void poseCallback(const geometry_msgs::PoseWithCovarianceStamped& pose);
-  void poseStampedCallback(const geometry_msgs::PoseStamped& pose);
-  void processPose(const geometry_msgs::Pose& pose);
-  void odometryCallback(const nav_msgs::Odometry& odo);
+
 };
 
 

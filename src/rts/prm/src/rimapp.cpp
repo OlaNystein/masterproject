@@ -47,36 +47,20 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
   res.final_target_reached = prm_->getTargetReachedSingle(req.unit_id);
   return true;
 }
-// void RIMAPP::poseCallback(
-//   const geometry_msgs::PoseWithCovarianceStamped &pose) {
-//   processPose(pose.pose.pose);
-// }
 
-// void RIMAPP::poseStampedCallback(const geometry_msgs::PoseStamped &pose) {
-//   processPose(pose.pose);
+// void RIMAPP::runRimapp(){
+//   ros::Rate rr(10);  // 10Hz
+//   bool cont = true;
+//   while(cont){
+//     if (target_queue_.size() > 0){
+//       geometry_msgs::Pose pose = target_queue_[0];
+//       target_queue_.erase(target_queue_.begin());
+//     }
+//     cont = ros::ok();
+//     ros::spinOnce();
+//     rr.sleep();
+//   }
 // }
+// pop, query, send path to pci, only erase if final target reached - start second query if there is one while moving
 
-// void RIMAPP::processPose(const geometry_msgs::Pose &pose) {
-//   StateVec state;
-//   state[0] = pose.position.x;
-//   state[1] = pose.position.y;
-//   state[2] = pose.position.z;
-//   state[3] = tf::getYaw(pose.orientation);
-//   //placeholder before robots transmit id
-//   int id = prm_->getActiveUnit();
-//   //
-//   prm_->setState(state, id);
-// }
-
-// void RIMAPP::odometryCallback(const nav_msgs::Odometry &odo) {
-//   StateVec state;
-//   state[0] = odo.pose.pose.position.x;
-//   state[1] = odo.pose.pose.position.y;
-//   state[2] = odo.pose.pose.position.z;
-//   state[3] = tf::getYaw(odo.pose.pose.orientation);
-//   //placeholder before robots transmit id
-//   int id = prm_->getActiveUnit();
-//   //
-//   prm_->setState(state, id);
-// }
 }// namespace search

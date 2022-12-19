@@ -26,7 +26,7 @@ void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
 void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
   sensor_msgs::PointCloud2 pcl_filtered = pcl;
 
-  // Iterate through pointcloud
+  //Iterate through pointcloud
   for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
     float pcl_x = it[0];
     float pcl_y = it[1];
@@ -183,6 +183,7 @@ void Prm::initializeParams(){
   robot_params_.getPlanningSize(robot_box_size_);
   planning_num_vertices_max_ = planning_params_.num_vertices_max;
   planning_num_edges_max_ = planning_params_.num_edges_max;
+
 }
 
 std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pose){
@@ -278,7 +279,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     ROS_INFO("Unit %d already at target given", active_id_);
     return Prm::GraphStatus::OK;
   }
- 
+  
   
   bool stop_sampling = false;
   detectTargetStatus(active_id_);
@@ -299,9 +300,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
     (num_vertices_added < planning_num_vertices_max_) &&
     (num_edges_added < planning_num_edges_max_)) {
-
     StateVec new_state;
     if (!sampleVertex(new_state)) {
+      ROS_INFO("x: %f y: %f z: :f", new_state.x(), new_state.y(), new_state.z());
       continue; // skip invalid sample
     }
 
@@ -309,7 +310,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     expandGraph(roadmap_graph_, new_state, rep);
 
     if (rep.status == ExpandGraphStatus::kSuccess) {
-      ROS_INFO("expanded graph");
       num_vertices_added += rep.num_vertices_added;
       num_edges_added += rep.num_edges_added;
       // Check if state is inside target area
@@ -348,6 +348,11 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
   Prm::GraphStatus res = Prm::GraphStatus::NOT_OK;
+
+  if(roadmap_graph_->getNumVertices() < 2){
+    ROS_WARN("Sampler failed, try again");
+    return res;
+  }
 
   if (num_target_neighbours < 1) {
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");

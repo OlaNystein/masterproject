@@ -3,7 +3,7 @@ use_tf_transforms: True
 use_freespace_pointcloud: False
 tsdf_voxels_per_side: 16
 tsdf_voxel_size: 0.20
-max_ray_length_m: 50.0
+max_ray_length_m: 50
 truncation_distance: 0.4
 use_sparsity_compensation_factor: True
 sparsity_compensation_factor: 100.0 #10.0
