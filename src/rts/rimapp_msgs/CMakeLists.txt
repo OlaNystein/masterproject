@@ -16,6 +16,12 @@ add_service_files(
   upi_planner.srv
 )
 
+add_message_files(
+  DIRECTORY msg
+  FILES
+  best_path.msg
+)
+
 
 generate_messages(
   DEPENDENCIES

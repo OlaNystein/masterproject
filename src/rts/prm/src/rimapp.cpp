@@ -13,6 +13,8 @@ namespace search {
   }
 
   upi_ = new Upi(nh, nh_private);
+
+  best_path_pub_ = nh_.advertise<rimapp_msgs::best_path>("best_path_res", 100);
   
   plan_service_ = nh_.advertiseService("prm/plan", &RIMAPP::planServiceCallback, this);
   ROS_WARN("rimapp service advertised");
@@ -48,19 +50,33 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
   return true;
 }
 
-// void RIMAPP::runRimapp(){
-//   ros::Rate rr(10);  // 10Hz
-//   bool cont = true;
-//   while(cont){
-//     if (target_queue_.size() > 0){
-//       geometry_msgs::Pose pose = target_queue_[0];
-//       target_queue_.erase(target_queue_.begin());
-//     }
-//     cont = ros::ok();
-//     ros::spinOnce();
-//     rr.sleep();
-//   }
-// }
+bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
+                           rimapp_msgs::plan_path_single::Response& res) {
+
+  pair<geometry_msgs::Pose, int>> p(req.target_pose, req.unit_id);
+  target_queue_.push_back(p);
+  res.success = true;
+  return true;
+}
+
+
+void RIMAPP::runRimapp(){
+  ros::Rate rr(10);  // 10Hz
+  bool cont = true;
+  while(cont){
+    if (target_queue_.size() > 0){
+      geometry_msgs::Pose target_pose = target_queue_[0].first;
+      int id = target_queue_[0].second;
+      target_queue_.erase(target_queue_.begin());
+      prm_->setActiveUnit(id);
+      std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
+      //publish results to pci-bestpath topic med ID, riktig pci kjører drone
+    }
+    cont = ros::ok();
+    ros::spinOnce();
+    rr.sleep();
+  }
+}
 // pop, query, send path to pci, only erase if final target reached - start second query if there is one while moving
 
 }// namespace search

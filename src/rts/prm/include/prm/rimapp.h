@@ -34,6 +34,8 @@ class RIMAPP {
 
   ros::ServiceServer plan_service_;
 
+  ros::Publisher best_path_pub_;
+
   ros::Subscriber pose_subscriber_;
   ros::Subscriber pose_stamped_subscriber_;
   ros::Subscriber odometry_subscriber_;
@@ -42,7 +44,7 @@ class RIMAPP {
 
   Upi* upi_;
 
-  std::vector<geometry_msgs::Pose> target_queue_;
+  std::vector<pair<geometry_msgs::Pose, int>> target_queue_;
 
   void runRimapp();
 

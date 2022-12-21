@@ -70,6 +70,8 @@ class PlannerControlInterface {
   ros::Subscriber odometry_sub_;
   ros::Subscriber pose_sub_;
   ros::Subscriber pose_stamped_sub_;
+
+  ros::Subscriber best_path_sub_;
   
   ros::ServiceClient rimapp_client_;
   ros::ServiceClient search_client_;
@@ -164,15 +166,18 @@ class PlannerControlInterface {
 
   ros::Time ttime;
   double total_time_;
- 
 
+  bool bestPathCallback(const rimapp_msgs::best_path);
   //rimapp parameters
   bool rimapp_request_;
   bool stop_request_;
+  bool execute_path_;
+  bool stuck_;
   geometry_msgs::Pose current_target_;
   bool target_reached_;
   int active_id_;
   void runRimapp();
+  void executePath();
 
 };
 }  // namespace explorer
