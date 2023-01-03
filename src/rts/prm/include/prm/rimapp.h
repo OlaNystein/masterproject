@@ -33,7 +33,7 @@ class RIMAPP {
   ros::NodeHandle nh_private_;
 
   ros::ServiceServer plan_service_;
-
+  
   ros::Publisher best_path_pub_;
 
   ros::Subscriber pose_subscriber_;

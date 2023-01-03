@@ -24,6 +24,7 @@ namespace search {
   // odometry_subscriber_ =
   //     nh_.subscribe("odometry", 100, &RIMAPP::odometryCallback, this);
 
+
   }
 
 
@@ -71,12 +72,16 @@ void RIMAPP::runRimapp(){
       prm_->setActiveUnit(id);
       std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
       //publish results to pci-bestpath topic med ID, riktig pci kjører drone
+      rimapp_msgs::best_path res;
+      res.unit_id = id;
+      res.final_target_reached = prm_->getTargetReachedSingle(id);
+      res.best_path = best_path;
+      best_path_pub.publish(res);
     }
     cont = ros::ok();
     ros::spinOnce();
     rr.sleep();
   }
 }
-// pop, query, send path to pci, only erase if final target reached - start second query if there is one while moving
 
 }// namespace search

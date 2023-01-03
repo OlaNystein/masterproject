@@ -167,16 +167,15 @@ class PlannerControlInterface {
   ros::Time ttime;
   double total_time_;
 
-  bool bestPathCallback(const rimapp_msgs::best_path);
+  bool bestPathCallback(const rimapp_msgs::best_path msg);
   //rimapp parameters
   bool rimapp_request_;
   bool stop_request_;
   bool execute_path_;
   bool stuck_;
   geometry_msgs::Pose current_target_;
-  bool target_reached_;
   int active_id_;
-  void runRimapp();
+  void callRimapp();
   void executePath();
 
 };
