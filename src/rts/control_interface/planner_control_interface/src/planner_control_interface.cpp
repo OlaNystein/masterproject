@@ -14,7 +14,7 @@ PlannerControlInterface::PlannerControlInterface(
       nh_.advertise<planner_msgs::PlannerStatus>("gbplanner_status", 5);
 
   // Path results
-  best_path_sub_.nh_subscribe("best_path_res", 1, &PlannerControlInterface::bestPathCallback, this);
+  best_path_sub_ = nh_.subscribe("best_path_res", 1, &PlannerControlInterface::bestPathCallback, this);
   // Pose information.
   odometry_sub_ = nh_.subscribe(
       "odometry", 1, &PlannerControlInterface::odometryCallback, this);
@@ -36,7 +36,7 @@ PlannerControlInterface::PlannerControlInterface(
   pci_rimapp_server_ = nh_.advertiseService("pci_plan_path_single",
                                             &PlannerControlInterface::rimappCallback, this);
   
-  rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("prm/plan");
+  rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("rimapp/plan");
 
   // pci_surveillance_server_ = nh_serviceClient<rimapp_msgs::
 
@@ -68,10 +68,11 @@ PlannerControlInterface::PlannerControlInterface(
   run();
 }
 
-bool PlannerControlInterface::bestPathCallback(const rimapp_msgs::best_path msg){
+void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg){
+  ROS_INFO("PCI: MSG recieved %d", active_id_);
   if (msg.unit_id == active_id_){
     current_path_ = msg.best_path;
-    ROS_INFO("PCI updated current path");
+    ROS_INFO("PCI: Unit %d updated current path", active_id_);
     executePath();
     if (msg.final_target_reached) {
       ROS_WARN("PCI:Reached final target for unit %d, no need for requeuing", active_id_);
@@ -80,7 +81,6 @@ bool PlannerControlInterface::bestPathCallback(const rimapp_msgs::best_path msg)
       rimapp_request_ = true;
     }
   }
-  return true;
 }
 
 bool PlannerControlInterface::goToWaypointCallback(

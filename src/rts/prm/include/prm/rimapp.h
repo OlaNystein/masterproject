@@ -15,6 +15,8 @@
 
 #include "rimapp_msgs/plan_path_single.h"
 
+#include "rimapp_msgs/Bestpath.h"
+
 #include <nav_msgs/Path.h>
 
 #include <prm/upi.h>
@@ -44,7 +46,7 @@ class RIMAPP {
 
   Upi* upi_;
 
-  std::vector<pair<geometry_msgs::Pose, int>> target_queue_;
+  std::vector<std::pair<geometry_msgs::Pose, int>> target_queue_;
 
   void runRimapp();
 

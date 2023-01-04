@@ -37,6 +37,7 @@
 #include "rrtstar_msgs/pci_search.h"
 #include "rimapp_msgs/plan_path_single.h"
 #include "rimapp_msgs/pci_plan_path_single.h"
+#include "rimapp_msgs/Bestpath.h"
 
 namespace search {
 
@@ -167,7 +168,7 @@ class PlannerControlInterface {
   ros::Time ttime;
   double total_time_;
 
-  bool bestPathCallback(const rimapp_msgs::best_path msg);
+  void bestPathCallback(const rimapp_msgs::Bestpath &msg);
   //rimapp parameters
   bool rimapp_request_;
   bool stop_request_;

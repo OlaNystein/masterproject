@@ -14,48 +14,45 @@ namespace search {
 
   upi_ = new Upi(nh, nh_private);
 
-  best_path_pub_ = nh_.advertise<rimapp_msgs::best_path>("best_path_res", 100);
+  best_path_pub_ = nh_.advertise<rimapp_msgs::Bestpath>("rimapp/best_path_res", 100);
   
-  plan_service_ = nh_.advertiseService("prm/plan", &RIMAPP::planServiceCallback, this);
+  plan_service_ = nh_.advertiseService("rimapp/plan", &RIMAPP::planServiceCallback, this);
   ROS_WARN("rimapp service advertised");
-  // pose_subscriber_ = nh_.subscribe("pose", 100, &RIMAPP::poseCallback, this);
-  // pose_stamped_subscriber_ =
-  //     nh_.subscribe("pose_stamped", 100, &RIMAPP::poseStampedCallback, this);
-  // odometry_subscriber_ =
-  //     nh_.subscribe("odometry", 100, &RIMAPP::odometryCallback, this);
 
+  runRimapp();
 
   }
 
 
 
-bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
-                           rimapp_msgs::plan_path_single::Response& res) {
-  //
-  res.stuck = false;
-  //
-  ROS_INFO("Single unit planner service reached");
-  res.best_path.clear();
-  ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. id: %d", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z, req.unit_id);
-  prm_->setActiveUnit(req.unit_id);
+// bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
+//                            rimapp_msgs::plan_path_single::Response& res) {
+//   //
+//   res.stuck = false;
+//   //
+//   ROS_INFO("Single unit planner service reached");
+//   res.best_path.clear();
+//   ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. id: %d", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z, req.unit_id);
+//   prm_->setActiveUnit(req.unit_id);
 
-  res.best_path = prm_->runPlanner(req.target_pose);
+//   res.best_path = prm_->runPlanner(req.target_pose);
  
-  if (res.best_path.size() <= 1) {
-    ROS_WARN("RIMAPP: No best path returned");
-  }
-  if (res.best_path.size() > 1){
-    ROS_WARN("RIMAPP: Best path found");
-  }
-  res.final_target_reached = prm_->getTargetReachedSingle(req.unit_id);
-  return true;
-}
+//   if (res.best_path.size() <= 1) {
+//     ROS_WARN("RIMAPP: No best path returned");
+//   }
+//   if (res.best_path.size() > 1){
+//     ROS_WARN("RIMAPP: Best path found");
+//   }
+//   res.final_target_reached = prm_->getTargetReachedSingle(req.unit_id);
+//   return true;
+// }
 
 bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
                            rimapp_msgs::plan_path_single::Response& res) {
-
-  pair<geometry_msgs::Pose, int>> p(req.target_pose, req.unit_id);
+                          
+  std::pair<geometry_msgs::Pose, int> p(req.target_pose, req.unit_id);
   target_queue_.push_back(p);
+  ROS_INFO("RIMAPP: Order from unit %d added to queue", req.unit_id);
   res.success = true;
   return true;
 }
@@ -64,19 +61,29 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
 void RIMAPP::runRimapp(){
   ros::Rate rr(10);  // 10Hz
   bool cont = true;
-  while(cont){
+  while(cont){ 
     if (target_queue_.size() > 0){
       geometry_msgs::Pose target_pose = target_queue_[0].first;
       int id = target_queue_[0].second;
+      ROS_INFO("RIMAPP:: planner for unit %d starting", id);
       target_queue_.erase(target_queue_.begin());
       prm_->setActiveUnit(id);
       std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
       //publish results to pci-bestpath topic med ID, riktig pci kjører drone
-      rimapp_msgs::best_path res;
+      
+      if (best_path.size() <= 1) {
+        ROS_WARN("RIMAPP: No best path returned");
+      }
+      if (best_path.size() > 1){
+        ROS_WARN("RIMAPP: Best path found");
+      }
+
+      rimapp_msgs::Bestpath res;
       res.unit_id = id;
       res.final_target_reached = prm_->getTargetReachedSingle(id);
       res.best_path = best_path;
-      best_path_pub.publish(res);
+      best_path_pub_.publish(res);
+      ROS_INFO("RIMAPP:MSG published");
     }
     cont = ros::ok();
     ros::spinOnce();

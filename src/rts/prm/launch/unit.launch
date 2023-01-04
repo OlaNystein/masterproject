@@ -20,6 +20,7 @@
 
   <remap from="$(arg robot_name)/velodyne_points" to="m100/velodyne_points"/>
 
+
   <group ns="$(arg robot_name)">
 
     <node pkg="tf" type="static_transform_publisher" name="tf_51" args="0.15 0 0.0 0.0 0.261 0.0 $(arg robot_name)/base_link $(arg robot_name)/vi_sensor/base_link 10" />
@@ -52,14 +53,14 @@
 
     <arg name="odometry_topic" default="ground_truth/odometry_throttled"/>
     <node name="pose_throttler" type="throttle" pkg="topic_tools" args="messages ground_truth/pose_with_covariance 10 /msf_core/pose" />
-    
 
     <node pkg="pci_mav" type="pci_mav_ros_node" name="pci_mav_ros_node" output="screen">
       <remap from="command/trajectory" to="command/trajectory" />
       <remap from="planner_server" to="prm" />
       <remap from="planner_homing_server" to="prm/homing" />
       <remap from="odometry" to="$(arg odometry_topic)"/>
-      <remap from="/$(arg robot_name)/prm/plan" to="/prm/plan"/>
+      <remap from="best_path_res" to="/rimapp/best_path_res"/>
+      <remap from="/$(arg robot_name)/rimapp/plan" to="/rimapp/plan"/>
       <rosparam command="load" file="$(arg pci_file)" />
     </node>
 
