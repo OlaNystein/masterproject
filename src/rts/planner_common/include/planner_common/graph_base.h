@@ -259,8 +259,8 @@ struct RandomSamplingParams {
     num_edges_max = 10000;
     num_loops_cutoff = 20000;
     num_loops_max = 100000;
-    reached_target_radius = 0.7;
-    check_collision_at_source = true;
+    reached_target_radius = 1;
+    check_collision_at_source = false;
     num_paths_to_target_max = 10;
   }
   int num_vertices_max;

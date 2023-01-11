@@ -154,6 +154,9 @@ bool PlannerControlInterface::init() {
   rimapp_request_ = false;
   execute_path_ = false;
 
+  // Uninitialized id is -1, gets set by the first order
+  active_id_ = -1;
+
   go_to_waypoint_request_ = false;
   // Wait for the system is ready.
   // For example: checking odometry is ready.

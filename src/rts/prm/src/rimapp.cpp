@@ -67,6 +67,7 @@ void RIMAPP::runRimapp(){
       int id = target_queue_[0].second;
       ROS_INFO("RIMAPP:: planner for unit %d starting", id);
       target_queue_.erase(target_queue_.begin());
+      ROS_INFO("Target queue size: %d", target_queue_.size());
       prm_->setActiveUnit(id);
       std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
       //publish results to pci-bestpath topic med ID, riktig pci kjører drone

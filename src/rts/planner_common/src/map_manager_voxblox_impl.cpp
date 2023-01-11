@@ -203,7 +203,6 @@ MapManagerVoxblox<SDFServerType, SDFVoxelType>::getPathStatus(
   voxblox::AnyIndex box_voxels(std::ceil(box_size.x() * voxel_size_inv),
                                std::ceil(box_size.y() * voxel_size_inv),
                                std::ceil(box_size.z() * voxel_size_inv));
-
   // Iterate over the ray.
   VoxelStatus current_status = VoxelStatus::kFree;
   for (const voxblox::GlobalIndex& global_index : global_voxel_indices) {

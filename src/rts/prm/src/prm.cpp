@@ -3,7 +3,7 @@
 namespace search{
 namespace prm{
 
-Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
+Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private), tf_listener_(nh){
  reached_final_target_ = false;
  target_status_ = Prm::StateStatus::UNINITIALIZED;
  unit_status_ = Prm::StateStatus::UNINITIALIZED;
@@ -26,18 +26,28 @@ void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
 void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
   sensor_msgs::PointCloud2 pcl_filtered = pcl;
 
+  tf::StampedTransform sensor_to_world_transform;
+  tf_listener_.lookupTransform("world", pcl_filtered.header.frame_id, pcl_filtered.header.stamp, sensor_to_world_transform);
+
   //Iterate through pointcloud
   for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
-    float pcl_x = it[0];
-    float pcl_y = it[1];
-    float pcl_z = it[2];
+
+
+    // float pcl_x = it[0];
+    // float pcl_y = it[1];
+    // float pcl_z = it[2];
+    tf::Vector3 point(it[0], it[1], it[2]);
+    point = sensor_to_world_transform(point);
+    float pcl_x = point.x();
+    float pcl_y = point.y();
+    float pcl_z = point.z();
     
     // Iterate through units to remove points around them
     for (int i = 0; i < (*units_for_pcl_).size(); i++){
       float distance = sqrt(pow(pcl_x - (*units_for_pcl_)[i]->current_state_[0], 2) + pow(pcl_y - (*units_for_pcl_)[i]->current_state_[1], 2)
                       + pow(pcl_z - (*units_for_pcl_)[i]->current_state_[2], 2));
 
-      if (distance < 1.5*pcl_clear_radius_){
+      if (distance < 1*pcl_clear_radius_){
         // Clear points around robots
         it[0] = std::numeric_limits<float>::quiet_NaN();
         it[1] = std::numeric_limits<float>::quiet_NaN();
@@ -72,7 +82,7 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
 
 
 
-  for (int i = 0; i <= num_robots_; i++){
+  for (int i = 0; i < num_robots_; i++){
     unit* u = new unit(nh_, nh_private_);
     u->setID(i);
 
@@ -177,7 +187,7 @@ bool Prm::loadParams(){
 }
 
 void Prm::initializeParams(){
-  random_sampler_.setParams(local_space_params_, local_space_params_);
+  random_sampler_.setParams(global_space_params_, local_space_params_);
 
   // Precompute robot box size for planning
   robot_params_.getPlanningSize(robot_box_size_);
@@ -287,6 +297,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     ROS_INFO("Target already connected!");
     stop_sampling = true;
     num_target_neighbours++;
+    units_[active_id_]->reached_final_target_ = true;
   }
 
   std::vector<Vertex*> target_neighbours;
@@ -479,9 +490,8 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
       origin + robot_params_.center_offset + direction + overshoot_vec;
   // Check collision if lazy mode is not activated
   
-  
   if ( MapManager::VoxelStatus::kFree ==
-        map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, true) || lazy_mode_) {
+        map_manager_->getPathStatus(start_pos, end_pos, robot_box_size_, false) || lazy_mode_) {
     Vertex* new_vertex =
         new Vertex(roadmap_graph_->generateVertexID(), new_state);
         
@@ -614,7 +624,7 @@ void Prm::detectTargetStatus(int unit_id){
   if (roadmap_graph_->getNearestVertexInRange(&tar_state, planning_params_.nearest_range_max, &nearest)){
     ROS_INFO("Target %d is near a vertex", unit_id);
     Vertex* link_vertex = NULL;
-    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id]->final_target_, link_vertex, 0.5);
+    bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id]->final_target_, link_vertex, 2*random_sampling_params_->reached_target_radius);
     if (connected_to_graph){
       units_[unit_id]->current_waypoint_ = link_vertex;
       units_[unit_id]->target_status_ = Prm::StateStatus::CONNECTED;
@@ -765,6 +775,7 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
   Eigen::Vector3d direction(cur_state[0] - origin[0], cur_state[1] - origin[1],
                             cur_state[2] - origin[2]);
   double direction_norm = direction.norm();
+  ROS_INFO("dir norm connect target: %f", direction_norm);
   bool connect_state_to_graph = true;
   const double kDelta = 0.05;
   if (direction_norm <= kDelta) {
