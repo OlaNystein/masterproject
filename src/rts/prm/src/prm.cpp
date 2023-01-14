@@ -366,6 +366,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   if (num_target_neighbours < 1) {
+    Vertex* waypoint;
+    roadmap_graph_->getNearestVertex(&target_state, &waypoint);
+    units_[active_id_]->current_waypoint_ = waypoint;
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
   }
   ROS_INFO("Currentv: %d, x: %f", units_[active_id_]->current_vertex_->id, units_[active_id_]->current_vertex_->state.x());
