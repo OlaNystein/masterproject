@@ -2,6 +2,7 @@
 
 #include <prm/rimapp.h>
 
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "rimapp_node");
   ros::NodeHandle nh;

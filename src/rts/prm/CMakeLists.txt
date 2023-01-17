@@ -22,6 +22,7 @@ cs_add_library(
    src/prm_rviz.cpp
    src/rimapp.cpp
    src/upi.cpp
+   src/minimap.cpp
 )
 
 

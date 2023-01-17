@@ -69,6 +69,8 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
   //TODO initialize odometry_ready to size of robotvector, currently one
   odometry_ready_.push_back(false);
 
+  minimap_ = new Minimap(nh, nh_private);
+
   active_id_ = 0;
   
   lazy_mode_ = false;
@@ -96,7 +98,9 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     u->setClearRad(clear_rad);
 
     units_.push_back(u);
+    cur_states_.push_back(&(u->current_state_));
   }
+  minimap_->setStatePtr(cur_states_);
   ROS_INFO("PRM registered %d units", units_.size());
   visualization_->visualizeWorkspace(units_[active_id_]->current_state_, global_space_params_, local_space_params_);
 

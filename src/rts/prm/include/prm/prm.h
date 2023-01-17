@@ -11,7 +11,6 @@
 
 #include <tf/transform_listener.h>
 
-
 #include <geometry_msgs/Polygon.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Pose.h>
@@ -21,6 +20,7 @@
 #include "kdtree/kdtree.h"
 
 #include "prm/prm_rviz.h"
+#include <prm/minimap.h>
 
 #include "planner_common/graph_base.h"
 #include "planner_common/graph.h"
@@ -147,6 +147,8 @@ class Prm {
 
   Visualization* visualization_;
 
+  Minimap* minimap_;
+
   // Parameters required for planning
   SensorParams sensor_params_; 
   SensorParams free_frustum_params_;
@@ -177,6 +179,7 @@ class Prm {
   // Query queue
 
   std::vector<Prm::unit*> units_;
+  std::vector<StateVec*> cur_states_;
   // make a msg struct with query info
     // id, start, end
   
