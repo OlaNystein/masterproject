@@ -14,12 +14,14 @@ add_service_files(
   plan_path_single.srv
   pci_plan_path_single.srv
   upi_planner.srv
+  upi_ma_planner.srv
 )
 
 add_message_files(
   DIRECTORY msg
   FILES
   Bestpath.msg
+  UpiPlanner.msg
 )
 
 

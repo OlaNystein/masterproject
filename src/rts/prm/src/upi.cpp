@@ -20,7 +20,7 @@ Upi::Upi(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
   nh_(nh), nh_private_(nh_private) {
 
   upi_planner_service_ = nh_.advertiseService("upi/single_planner", &Upi::upiPlanServiceCallback, this);
-  
+  upi_ma_planner_service_ = nh_.advertiseService("upi/ma_planner", &Upi::upiMAPlanServiceCallback, this);
   std::string ns = ros::this_node::getName();
 
   nh_.getParam(ns + "/num_robots", num_robots_);
@@ -30,7 +30,7 @@ Upi::Upi(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
     planner_clients_.push_back(p);
   }
 
-  //single_plan_req_ = false;
+
 
   
 }
@@ -39,28 +39,52 @@ bool Upi::upiPlanServiceCallback(
   rimapp_msgs::upi_planner::Request& req,
   rimapp_msgs::upi_planner::Response& res){
 
-  //single_plan_req_ = true;
+
   res.success = callPci(req.unit_id, req.target_pose);
   return true;
 }
 
-// void upi::runService(){
-//   while(true){
-//     if(single_plan_req_){
-//       callPci();
-//     }
-//   }
-// }
+bool Upi::upiMAPlanServiceCallback(
+  rimapp_msgs::upi_ma_planner::Request& req,
+  rimapp_msgs::upi_ma_planner::Response& res){
+  
+  bool success = false;
+  for (int i = 0; i < req.targets.size(); i++ ){
+    success = callPciSimple(req.targets[i].unit_id, req.targets[i].x_target, req.targets[i].y_target);
+  }
+  return true;
+}
+
 
 bool Upi::callPci(int id, geometry_msgs::Pose pose){
   rimapp_msgs::pci_plan_path_single upi_srv;
-  std::string service = planner_clients_[id]->planner_client_.getService();
+  //std::string service = planner_clients_[id]->planner_client_.getService();
   //ROS_INFO_STREAM("" << service);
   upi_srv.request.target = pose;
   upi_srv.request.unit_id = id;
   if(planner_clients_[id]->planner_client_.call(upi_srv)){
     ROS_INFO("UPI successfully called PCI");
-    //single_plan_req_ = false;
+    return true;
+  } else {
+    ROS_WARN("UPI unable to communicate with PCI");
+    return false;
+  }
+}
+
+bool Upi::callPciSimple(int id, int x_target, int y_target){
+  rimapp_msgs::pci_plan_path_single upi_srv;
+  geometry_msgs::Pose target_pose;
+  target_pose.position.x = x_target;
+  target_pose.position.y = y_target;
+  target_pose.position.z = 2;
+  target_pose.orientation.x = 0;
+  target_pose.orientation.y = 0;
+  target_pose.orientation.z = 0;
+  target_pose.orientation.w = 1;
+  upi_srv.request.target = target_pose;
+  upi_srv.request.unit_id = id;
+  if(planner_clients_[id]->planner_client_.call(upi_srv)){
+    ROS_INFO("UPI successfully called PCI");
     return true;
   } else {
     ROS_WARN("UPI unable to communicate with PCI");
