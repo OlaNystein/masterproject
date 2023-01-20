@@ -49,10 +49,14 @@ namespace search {
 
 bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
                            rimapp_msgs::plan_path_single::Response& res) {
-                          
-  std::pair<geometry_msgs::Pose, int> p(req.target_pose, req.unit_id);
-  target_queue_.push_back(p);
-  ROS_INFO("RIMAPP: Order from unit %d added to queue", req.unit_id);
+
+  if(req.unit_id < prm_->getNumRobots()){                        
+    std::pair<geometry_msgs::Pose, int> p(req.target_pose, req.unit_id);
+    target_queue_.push_back(p);
+    ROS_INFO("RIMAPP: Order from unit %d added to queue", req.unit_id);
+  } else {
+    ROS_WARN("Tried to add order to nonexisting unit %d, not adding order", req.unit_id);
+  }
   res.success = true;
   return true;
 }
@@ -84,7 +88,6 @@ void RIMAPP::runRimapp(){
       res.final_target_reached = prm_->getTargetReachedSingle(id);
       res.best_path = best_path;
       best_path_pub_.publish(res);
-      ROS_INFO("RIMAPP:MSG published");
     }
     cont = ros::ok();
     ros::spinOnce();

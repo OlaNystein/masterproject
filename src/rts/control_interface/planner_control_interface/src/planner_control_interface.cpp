@@ -69,7 +69,7 @@ PlannerControlInterface::PlannerControlInterface(
 }
 
 void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg){
-  ROS_INFO("PCI: MSG recieved %d", active_id_);
+  //ROS_INFO("PCI: MSG recieved %d", active_id_);
   if (msg.unit_id == active_id_){
     current_path_ = msg.best_path;
     ROS_INFO("PCI: Unit %d updated current path", active_id_);
@@ -337,7 +337,7 @@ bool PlannerControlInterface::rimappCallback(
           
   rimapp_request_ = true;
 
-  ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
+  //ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
 
   active_id_ = req.unit_id;
   current_target_ = req.target;
@@ -356,13 +356,13 @@ void PlannerControlInterface::executePath(){
     }
     if (current_path_.size() > 1){
       ROS_INFO("Executing prm-path");
-      ROS_WARN("print x of returned best path: %f, length: %d ", current_path_[0].position.x, current_path_.size());
+      //ROS_WARN("print x of returned best path: %f, length: %d ", current_path_[0].position.x, current_path_.size());
       std::vector<geometry_msgs::Pose> path_to_be_exe;
           pci_manager_->executePath(current_path_, path_to_be_exe,
                                     PCIManager::ExecutionPathType::kGlobalPath);
       int wp_pos_id = path_to_be_exe.size()-1;
-      ROS_WARN("Printing first pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
-      ROS_WARN("Printing last pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
+      //ROS_WARN("Printing first pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
+      //ROS_WARN("Printing last pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
     }
 
   } else {

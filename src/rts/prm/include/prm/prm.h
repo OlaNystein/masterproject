@@ -70,6 +70,8 @@ class Prm {
     Prm::StateStatus target_status_;
     double pcl_clear_radius_;
 
+    int publish_throttle_it_;
+
     const std::vector<Prm::unit*>* units_for_pcl_;
     void setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl);
 
@@ -134,6 +136,10 @@ class Prm {
   bool connectStateToGraph(std::shared_ptr<GraphManager> graph,
                               StateVec& cur_state, Vertex*& v_added,
                               double dist_ignore_collision_check);
+
+  int getNumRobots(){
+    return num_robots_;
+  }
   private:
   
   

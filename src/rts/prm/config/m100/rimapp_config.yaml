@@ -38,12 +38,12 @@ SensorParams:
 BoundedSpaceParams:
   Global:
     type:           kCuboid
-    min_val:        [-0.0 , -200.0, 0.0]
-    max_val:        [500.0, 200.0, 4.0]
+    min_val:        [-200.0 , -200.0, 1.0]
+    max_val:        [200.0, 200.0, 4.0]
   Local:
     type:           kCuboid
-    min_val:        [-15.0, -15.0, -1.0]
-    max_val:        [15.0, 15.0, 1.0]
+    min_val:        [-5.0, -5.0, -1.0]
+    max_val:        [5.0, 5.0, 1.0]
     # min_val:        [-3.0, -5.0, -1.0]
     # max_val:        [8.0, 5.0, 1.0]
     min_extension:  [-20.0, -20.0, -3.0]
@@ -104,10 +104,10 @@ PlanningParams:
   edge_length_min:  0.3
   edge_length_max:  6
   edge_overshoot:   0.0
-  num_vertices_max: 200 # per planning iteration
-  num_edges_max:    3000
-  num_loops_cutoff: 1000
-  num_loops_max:    10000
+  num_vertices_max: 500 # per planning iteration
+  num_edges_max:    10000
+  num_loops_cutoff: 2000
+  num_loops_max:    20000
   nearest_range:    5.0
   nearest_range_min: 0.5 # >= edge_length_min
   nearest_range_max: 5.0 # <= edge_length_max

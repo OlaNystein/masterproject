@@ -7,7 +7,8 @@ Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): n
  reached_final_target_ = false;
  target_status_ = Prm::StateStatus::UNINITIALIZED;
  unit_status_ = Prm::StateStatus::UNINITIALIZED;
- pointcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("m100/velodyne_points", 1000);
+ publish_throttle_it_ = 10;
+ pointcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("m100/velodyne_points", 10);
 }
 
 void Prm::unit::setOdomSubscriber(std::string odom_prefix){
@@ -16,7 +17,7 @@ void Prm::unit::setOdomSubscriber(std::string odom_prefix){
 }
 
 void Prm::unit::setPclSubscriber(std::string pcl_prefix){
-  pointcloud_sub_ = nh_.subscribe("m100_" + pcl_prefix + "/velodyne_points", 100, &unit::pclCallback, this);
+  pointcloud_sub_ = nh_.subscribe("m100_" + pcl_prefix + "/velodyne_points", 10, &unit::pclCallback, this);
 }
 
 void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
@@ -24,39 +25,44 @@ void Prm::unit::setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl){
 }
 
 void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
-  sensor_msgs::PointCloud2 pcl_filtered = pcl;
+  publish_throttle_it_++;
+  if(publish_throttle_it_ > 9){
+    publish_throttle_it_ = 0;
 
-  tf::StampedTransform sensor_to_world_transform;
-  tf_listener_.lookupTransform("world", pcl_filtered.header.frame_id, pcl_filtered.header.stamp, sensor_to_world_transform);
+    sensor_msgs::PointCloud2 pcl_filtered = pcl;
 
-  //Iterate through pointcloud
-  for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
+    tf::StampedTransform sensor_to_world_transform;
+    tf_listener_.lookupTransform("world", pcl_filtered.header.frame_id, pcl_filtered.header.stamp, sensor_to_world_transform);
+
+    //Iterate through pointcloud
+    for (sensor_msgs::PointCloud2Iterator<float> it(pcl_filtered, "x"); it != it.end(); ++it){
 
 
-    // float pcl_x = it[0];
-    // float pcl_y = it[1];
-    // float pcl_z = it[2];
-    tf::Vector3 point(it[0], it[1], it[2]);
-    point = sensor_to_world_transform(point);
-    float pcl_x = point.x();
-    float pcl_y = point.y();
-    float pcl_z = point.z();
-    
-    // Iterate through units to remove points around them
-    for (int i = 0; i < (*units_for_pcl_).size(); i++){
-      float distance = sqrt(pow(pcl_x - (*units_for_pcl_)[i]->current_state_[0], 2) + pow(pcl_y - (*units_for_pcl_)[i]->current_state_[1], 2)
-                      + pow(pcl_z - (*units_for_pcl_)[i]->current_state_[2], 2));
+      // float pcl_x = it[0];
+      // float pcl_y = it[1];
+      // float pcl_z = it[2];
+      tf::Vector3 point(it[0], it[1], it[2]);
+      point = sensor_to_world_transform(point);
+      float pcl_x = point.x();
+      float pcl_y = point.y();
+      float pcl_z = point.z();
+      
+      // Iterate through units to remove points around them
+      for (int i = 0; i < (*units_for_pcl_).size(); i++){
+        float distance = sqrt(pow(pcl_x - (*units_for_pcl_)[i]->current_state_[0], 2) + pow(pcl_y - (*units_for_pcl_)[i]->current_state_[1], 2)
+                        + pow(pcl_z - (*units_for_pcl_)[i]->current_state_[2], 2));
 
-      if (distance < 1*pcl_clear_radius_){
-        // Clear points around robots
-        it[0] = std::numeric_limits<float>::quiet_NaN();
-        it[1] = std::numeric_limits<float>::quiet_NaN();
-        it[2] = std::numeric_limits<float>::quiet_NaN();
+        if (distance < 1*pcl_clear_radius_){
+          // Clear points around robots
+          it[0] = std::numeric_limits<float>::quiet_NaN();
+          it[1] = std::numeric_limits<float>::quiet_NaN();
+          it[2] = std::numeric_limits<float>::quiet_NaN();
+        }
       }
     }
-  }
 
-  pointcloud_pub_.publish(pcl_filtered);
+    pointcloud_pub_.publish(pcl_filtered);
+  }
 }
 
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
@@ -94,14 +100,12 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     u->setUnitPtr(units_);
 
     double clear_rad = robot_box_size_.norm();
-    ROS_INFO("clear rad: %f", clear_rad);
     u->setClearRad(clear_rad);
 
     units_.push_back(u);
     cur_states_.push_back(&(u->current_state_));
   }
   minimap_->setStatePtr(cur_states_);
-  ROS_INFO("PRM registered %d units", units_.size());
   visualization_->visualizeWorkspace(units_[active_id_]->current_state_, global_space_params_, local_space_params_);
 
 }
@@ -237,7 +241,6 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   units_[active_id_]->reached_final_target_ = false;
   Prm::GraphStatus status = planPath(target_pose, best_path);
   if (best_path.size() == 1) {
-    ROS_WARN("First x coordinateof short path: %f", best_path[0].position.x);
   }
   visualization_->visualizeRefPath(best_path);
   switch(status) {
@@ -275,7 +278,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
 
   units_[active_id_]->current_waypoint_ = units_[active_id_]->current_vertex_;
-  ROS_INFO("Current vertex: %f %f %f", units_[active_id_]->current_vertex_->state[0], units_[active_id_]->current_vertex_->state[1], units_[active_id_]->current_vertex_->state[2]);
+  //ROS_INFO("Current vertex: %f %f %f", units_[active_id_]->current_vertex_->state[0], units_[active_id_]->current_vertex_->state[1], units_[active_id_]->current_vertex_->state[2]);
 
 
   Eigen::Vector3d dir_vec(units_[active_id_]->current_state_[0] - target_state[0],
@@ -309,7 +312,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   stat_->init(units_[active_id_]->current_vertex_->state);
 
   
-  ROS_INFO("Current state of unit %d: %f %f %f", active_id_, units_[active_id_]->current_state_[0], units_[active_id_]->current_state_[1], units_[active_id_]->current_state_[2]);
+  //ROS_INFO("Current state of unit %d: %f %f %f", active_id_, units_[active_id_]->current_state_[0], units_[active_id_]->current_state_[1], units_[active_id_]->current_state_[2]);
 
 
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
@@ -317,7 +320,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     (num_edges_added < planning_num_edges_max_)) {
     StateVec new_state;
     if (!sampleVertex(new_state)) {
-      ROS_INFO("x: %f y: %f z: :f", new_state.x(), new_state.y(), new_state.z());
+      //ROS_INFO("x: %f y: %f z: :f", new_state.x(), new_state.y(), new_state.z());
       continue; // skip invalid sample
     }
 
@@ -334,7 +337,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       
       // Check if sampled vertex is close enough to target area
       if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
-        ROS_WARN("TARGET SAMPLED");
+        //ROS_WARN("TARGET SAMPLED");
         target_neighbours.push_back(rep.vertex_added);
         num_target_neighbours++;
         units_[active_id_]->reached_final_target_ = true;
@@ -375,7 +378,6 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     units_[active_id_]->current_waypoint_ = waypoint;
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
   }
-  ROS_INFO("Currentv: %d, x: %f", units_[active_id_]->current_vertex_->id, units_[active_id_]->current_vertex_->state.x());
   std::vector<int> path_id_list;
   roadmap_graph_rep_.reset();
   roadmap_graph_->findShortestPaths(units_[active_id_]->current_vertex_->id, roadmap_graph_rep_);
@@ -440,10 +442,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   visualization_->visualizeSampler(random_sampler_);
-  //visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
+  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_->visualizeGraph(roadmap_graph_);
-    ROS_WARN("viz graph");
   } else {
     visualization_->visualizeFailedEdges(stat_);
     ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
@@ -782,7 +783,6 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
   Eigen::Vector3d direction(cur_state[0] - origin[0], cur_state[1] - origin[1],
                             cur_state[2] - origin[2]);
   double direction_norm = direction.norm();
-  ROS_INFO("dir norm connect target: %f", direction_norm);
   bool connect_state_to_graph = true;
   const double kDelta = 0.05;
   if (direction_norm <= kDelta) {
@@ -842,6 +842,8 @@ void Prm::printUnit(int unit_id){
   ROS_INFO("Active id: %d", active_id_);
   ROS_INFO("Current state is x: %f, y: %f, z: %f", units_[unit_id]->current_state_[0], units_[unit_id]->current_state_[1], units_[unit_id]->current_state_[2]);
 }
+
+
 
 } // prm
 } // search
