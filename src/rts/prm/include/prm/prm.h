@@ -209,7 +209,13 @@ class Prm {
 
   void printUnit(int unit_id);
 
-
+  // bool addRefPathToGraph(const std::shared_ptr<GraphManager> graph_manager,
+  //                           const std::vector<geometry_msgs::Pose>& path);
+  // bool modifyPath(pcl::PointCloud<pcl::PointXYZ>* obstacle_pcl,
+  //                    Eigen::Vector3d& p0, Eigen::Vector3d& p1,
+  //                    Eigen::Vector3d& p1_mod);
+  // bool improveFreePath(const std::vector<geometry_msgs::Pose>& path_orig,
+  //                         std::vector<geometry_msgs::Pose>& path_mod);
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder

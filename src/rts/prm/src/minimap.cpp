@@ -43,6 +43,9 @@ void Minimap::voxelCallback(const visualization_msgs::MarkerArray& msg){
 
   for (const auto& point : points){
     // flip  and fit axes from world frame to image
+    if ((point.z < 0.5) || (point.z > 4)){
+      continue;
+    }
     int y = fitXToYRange(point.x, maxX, minX);
     int x = fitYToXRange(point.y, maxY, minY);
     //ROS_WARN("x: %d, y: %d", x, y);
@@ -78,7 +81,7 @@ void Minimap::colorUnit(int x, int y){
   if ((x < x_range)||(x > minimap_.width - x_range)) {
     x_range = x;
   } 
-  if ((y < x_range)||(y > minimap_.height - y_range)) {
+  if ((y < y_range)||(y > minimap_.height - y_range)) {
     y_range = y;
   }
 

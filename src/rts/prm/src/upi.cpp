@@ -48,11 +48,12 @@ bool Upi::upiMAPlanServiceCallback(
   rimapp_msgs::upi_ma_planner::Request& req,
   rimapp_msgs::upi_ma_planner::Response& res){
   
-  bool success = false;
+  res.success = false;
   for (int i = 0; i < req.targets.size(); i++ ){
-    success = callPciSimple(req.targets[i].unit_id, req.targets[i].x_target, req.targets[i].y_target);
+    res.success = callPciSimple(req.targets[i].unit_id, req.targets[i].x_target, req.targets[i].y_target);
   }
-  return true;
+  
+  return res.success;
 }
 
 
@@ -63,7 +64,7 @@ bool Upi::callPci(int id, geometry_msgs::Pose pose){
   upi_srv.request.target = pose;
   upi_srv.request.unit_id = id;
   if(planner_clients_[id]->planner_client_.call(upi_srv)){
-    ROS_INFO("UPI successfully called PCI");
+    ROS_INFO("UPI successfully called PCI for unit %d", id);
     return true;
   } else {
     ROS_WARN("UPI unable to communicate with PCI");

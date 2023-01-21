@@ -172,6 +172,7 @@ MapManagerVoxblox<SDFServerType, SDFVoxelType>::getBoxStatusInVoxels(
           if (stop_at_unknown_voxel) {
             return VoxelStatus::kUnknown;
           }
+          
           current_status = VoxelStatus::kUnknown;
         } else if (voxel->distance <= distance_thres) {
           return VoxelStatus::kOccupied;
@@ -461,5 +462,7 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::extractLocalMapAlongAxis(
     }
   }
 }
+
+
 // }  // namespace gbplanner
 // }  // namespace explorer
