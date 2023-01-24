@@ -106,7 +106,8 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     u->setClearRad(clear_rad);
 
     units_.push_back(u);
-    cur_states_.push_back(&(u->current_state_));
+    std::pair<int, StateVec*> p = std::make_pair(u->id_, &(u->current_state_));
+    cur_states_.push_back(p);
   }
   minimap_->setStatePtr(cur_states_);
   visualization_->visualizeWorkspace(units_[active_id_]->current_state_, global_space_params_, local_space_params_);

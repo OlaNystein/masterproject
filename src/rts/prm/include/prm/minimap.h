@@ -15,7 +15,7 @@ class Minimap {
   public:
     Minimap(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
-    void setStatePtr(const std::vector<StateVec*>& states_for_minimap);
+    void setStatePtr(const std::vector<std::pair<int, StateVec*>>& states_for_minimap);
 
   private:
     ros::NodeHandle nh_;
@@ -26,7 +26,7 @@ class Minimap {
 
     sensor_msgs::Image minimap_;
 
-    const std::vector<StateVec*>* states_for_minimap_;
+    const std::vector<std::pair<int, StateVec*>>* states_for_minimap_;
 
     void voxelCallback(const visualization_msgs::MarkerArray& msg);
 
@@ -38,7 +38,7 @@ class Minimap {
 
     std::tuple<uint8_t, uint8_t, uint8_t> fitZtoRGB(double z);
 
-    void colorUnit(int x, int y);
+    void colorUnit(int x, int y, int id);
 
 };
 

@@ -203,7 +203,7 @@ class Prm {
   // Query queue
 
   std::vector<Prm::unit*> units_;
-  std::vector<StateVec*> cur_states_;
+  std::vector<std::pair<int, StateVec*>> cur_states_;
   // make a msg struct with query info
     // id, start, end
   

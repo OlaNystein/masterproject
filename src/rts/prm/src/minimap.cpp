@@ -48,7 +48,7 @@ void Minimap::voxelCallback(const visualization_msgs::MarkerArray& msg){
     }
     int y = fitXToYRange(point.x, maxX, minX);
     int x = fitYToXRange(point.y, maxY, minY);
-    //ROS_WARN("x: %d, y: %d", x, y);
+
     if (y < 0) {y = 0;}
     if (x < 0) {x = 0;}
     std::tuple<uint8_t, uint8_t, uint8_t> rgb = fitZtoRGB(point.z);
@@ -59,15 +59,15 @@ void Minimap::voxelCallback(const visualization_msgs::MarkerArray& msg){
 
   for (const auto& state : (*states_for_minimap_)){
 
-    int unit_x = state->x();
-    int unit_y = state->y();
+    int unit_x = state.second->x();
+    int unit_y = state.second->y();
 
     int y = fitXToYRange(unit_x, maxX, minX);
     int x = fitYToXRange(unit_y, maxY, minY);
  
     if (y < 0) {y = 0;}
     if (x < 0) {x = 0;}
-    colorUnit(x, y);
+    colorUnit(x, y, state.first);
   }
 
 
@@ -75,19 +75,66 @@ void Minimap::voxelCallback(const visualization_msgs::MarkerArray& msg){
   minimap_pub_.publish(minimap_);
 }
 
-void Minimap::colorUnit(int x, int y){
-  int x_range = 5;
-  int y_range = 5;
+void Minimap::colorUnit(int x, int y, int id){
+  int x_range = 3;
+  int y_range = 3;
   if ((x < x_range)||(x > minimap_.width - x_range)) {
     x_range = x;
   } 
   if ((y < y_range)||(y > minimap_.height - y_range)) {
     y_range = y;
   }
+  uint8_t color_r, color_g, color_b;
+
+  switch (id)
+  {
+  case 0: // red
+    color_r = 255;
+    color_g = 0;
+    color_b = 0;
+    break;
+  case 1: // orange
+    color_r = 255;
+    color_g = 128;
+    color_b = 0;
+    break;
+  case 2: // yellow
+    color_r = 255;
+    color_g = 255;
+    color_b = 0;
+    break;
+  case 3: // green
+    color_r = 0;
+    color_g = 255;
+    color_b = 0;
+    break;
+  case 4: // pink
+    color_r = 255;
+    color_g = 51;
+    color_b = 153;
+    break;
+  case 5: // blue
+    color_r = 0;
+    color_g = 0;
+    color_b = 255;
+    break;
+  case 6: // turqoise
+    color_r = 0;
+    color_g = 255;
+    color_b = 255;
+    break;
+  default: // dark red, fail
+    color_r = 128;
+    color_g = 0;
+    color_b = 0;
+    break;
+  }
 
   for (int x_i = x - x_range; x_i < x + x_range; x_i++){
     for (int y_i = y - y_range; y_i < y + y_range; y_i++){
-      minimap_.data[y_i*minimap_.step + 3*x_i] = (uint8_t) 255;
+      minimap_.data[y_i*minimap_.step + 3*x_i] = color_r;
+      minimap_.data[y_i*minimap_.step + 3*x_i+1] = color_g;
+      minimap_.data[y_i*minimap_.step + 3*x_i+2] = color_b;
     }
   }
 
@@ -121,7 +168,7 @@ std::tuple<uint8_t, uint8_t, uint8_t> Minimap::fitZtoRGB(double z) {
   return std::make_tuple(red, green, blue);
 }
 
-void Minimap::setStatePtr(const std::vector<StateVec*>& states_for_minimap){
+void Minimap::setStatePtr(const std::vector<std::pair<int, StateVec*>>& states_for_minimap){
   states_for_minimap_ = &states_for_minimap;
 }
 
