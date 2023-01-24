@@ -71,7 +71,6 @@ void Prm::unit::pclCallback(const sensor_msgs::PointCloud2& pcl){
 Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private){
 
 
-  visualization_ = new Visualization(nh_, nh_private_);
   roadmap_graph_.reset(new GraphManager());
   map_manager_ = new MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>(
   nh_, nh_private_);
@@ -108,9 +107,13 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     units_.push_back(u);
     std::pair<int, StateVec*> p = std::make_pair(u->id_, &(u->current_state_));
     cur_states_.push_back(p);
+
+    Visualization* v = new Visualization(nh_, nh_private_);
+    visualization_.push_back(v);
+    v->setId(u->id_);
   }
   minimap_->setStatePtr(cur_states_);
-  visualization_->visualizeWorkspace(units_[active_id_]->current_state_, global_space_params_, local_space_params_);
+  visualization_[active_id_]->visualizeWorkspace(units_[active_id_]->current_state_, global_space_params_, local_space_params_);
 
 }
 
@@ -158,9 +161,9 @@ void Prm::softReset(){
   //       robot_box_size_);
   //   }
 
-  //   visualization_->visualizeRobotState(root_vertex->state, robot_params_);
-  //   visualization_->visualizeSensorFOV(root_vertex->state, sensor_params_);
-  //   visualization_->visualizeWorkspace(
+  //   visualization_[active_id_]->visualizeRobotState(root_vertex->state, robot_params_);
+  //   visualization_[active_id_]->visualizeSensorFOV(root_vertex->state, sensor_params_);
+  //   visualization_[active_id_]->visualizeWorkspace(
   //       root_vertex->state, global_space_params_, local_space_params_);
 }
 
@@ -246,7 +249,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   Prm::GraphStatus status = planPath(target_pose, best_path);
   if (best_path.size() == 1) {
   }
-  visualization_->visualizeRefPath(best_path);
+  visualization_[active_id_]->visualizeRefPath(best_path);
   switch(status) {
     case Prm::GraphStatus::ERR_KDTREE:
       ROS_WARN("Error with the graph");
@@ -271,7 +274,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_edges_added(0);
   int num_target_neighbours(0);
 
-  std::vector<geometry_msgs::Pose> best_path_t;
+  std::vector<geometry_msgs::Pose> best_path_temp;
 
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
@@ -445,7 +448,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       tf::Pose poseTF(quat, origin);
       geometry_msgs::Pose pose;
       tf::poseTFToMsg(poseTF, pose);
-      best_path_t.push_back(pose);
+      best_path_temp.push_back(pose);
       double seg_length = (p1 - p0).norm();
       traverse_length += seg_length;
       if ((traverse_length > planning_params_.traverse_length_max)) {
@@ -586,32 +589,38 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
 
   units_[active_id_]->current_path_id_list_ = path_id_list;
-
-  for (int i = 0; i < (best_path_t.size() - 1); ++i) {
-      Eigen::Vector3d vec(best_path_t[i + 1].position.x - best_path_t[i].position.x,
-                          best_path_t[i + 1].position.y - best_path_t[i].position.y,
-                          best_path_t[i + 1].position.z - best_path_t[i].position.z);
+  if (!(best_path_temp.empty())){
+    double yawhalf = units_[active_id_]->current_state_[3] * 0.5;
+    best_path_temp[0].orientation.x = 0.0;
+    best_path_temp[0].orientation.y = 0.0;
+    best_path_temp[0].orientation.z = sin(yawhalf);
+    best_path_temp[0].orientation.w = cos(yawhalf);
+  }
+  for (int i = 0; i < (best_path_temp.size() - 1); ++i) {
+      Eigen::Vector3d vec(best_path_temp[i + 1].position.x - best_path_temp[i].position.x,
+                          best_path_temp[i + 1].position.y - best_path_temp[i].position.y,
+                          best_path_temp[i + 1].position.z - best_path_temp[i].position.z);
       double yaw = std::atan2(vec[1], vec[0]);
       tf::Quaternion quat;
       quat.setEuler(0.0, 0.0, yaw);
-      best_path_t[i + 1].orientation.x = quat.x();
-      best_path_t[i + 1].orientation.y = quat.y();
-      best_path_t[i + 1].orientation.z = quat.z();
-      best_path_t[i + 1].orientation.w = quat.w();
+      best_path_temp[i + 1].orientation.x = quat.x();
+      best_path_temp[i + 1].orientation.y = quat.y();
+      best_path_temp[i + 1].orientation.z = quat.z();
+      best_path_temp[i + 1].orientation.w = quat.w();
   }
 
-  best_path = best_path_t;
+  best_path = best_path_temp;
 
 
 
 
 
-  //visualization_->visualizeSampler(random_sampler_);
-  visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
+  //visualization_[active_id_]->visualizeSampler(random_sampler_);
+  visualization_[active_id_]->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
-    visualization_->visualizeGraph(roadmap_graph_);
+    visualization_[active_id_]->visualizeGraph(roadmap_graph_);
   } else {
-    visualization_->visualizeFailedEdges(stat_);
+    visualization_[active_id_]->visualizeFailedEdges(stat_);
     ROS_INFO("Number of failed samples: [%d] vertices and [%d] edges",
     stat_->num_vertices_fail, stat_->num_edges_fail);
     res = Prm::GraphStatus::ERR_KDTREE;
@@ -1548,7 +1557,7 @@ bool Prm::doCuboidsIntersect(const Eigen::AlignedBox3d &cuboid1, const Eigen::Al
 //     return false;
 //   }
 
-//   visualization_->visualizeHyperplanes(p_center, hyperplane_list,
+//   visualization_[active_id_]->visualizeHyperplanes(p_center, hyperplane_list,
 //                                        tangent_point_list);
 //   return true;
 // }

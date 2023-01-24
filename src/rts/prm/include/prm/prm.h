@@ -169,7 +169,7 @@ class Prm {
 
   ShortestPathsReport roadmap_graph_rep_;
 
-  Visualization* visualization_;
+  std::vector<Visualization*> visualization_;
 
   Minimap* minimap_;
 

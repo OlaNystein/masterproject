@@ -1464,9 +1464,58 @@ void Visualization::visualizeRefPath(
   edge_marker.action = visualization_msgs::Marker::ADD;
   edge_marker.type = visualization_msgs::Marker::LINE_LIST;
   edge_marker.scale.x = 0.25;
+
+
+
   edge_marker.color.r = 244.0 / 255.0;
   edge_marker.color.g = 66.0 / 255.0;
   edge_marker.color.b = 226.0 / 255.0;
+
+  switch (id_)
+    {
+    case 0: // red
+      edge_marker.color.r = 255 / 255.0;
+      edge_marker.color.g = 0 / 255.0;
+      edge_marker.color.b = 0 / 255.0;
+      break;
+    case 1: // orange
+      edge_marker.color.r = 255 / 255.0;
+      edge_marker.color.g = 128 / 255.0;
+      edge_marker.color.b = 0 / 255.0;
+      break;
+    case 2: // yellow
+      edge_marker.color.r = 255 / 255.0;
+      edge_marker.color.g = 255 / 255.0;
+      edge_marker.color.b = 0 / 255.0;
+      break;
+    case 3: // green
+      edge_marker.color.r = 0 / 255.0;
+      edge_marker.color.g = 255 / 255.0;
+      edge_marker.color.b = 0 / 255.0;
+      break;
+    case 4: // pink
+      edge_marker.color.r = 255 / 255.0;
+      edge_marker.color.g = 51 / 255.0;
+      edge_marker.color.b = 153 / 255.0;
+      break;
+    case 5: // blue
+      edge_marker.color.r = 0 / 255.0;
+      edge_marker.color.g = 0 / 255.0;
+      edge_marker.color.b = 255 / 255.0;
+      break;
+    case 6: // turqoise
+      edge_marker.color.r = 0 / 255.0;
+      edge_marker.color.g = 255 / 255.0;
+      edge_marker.color.b = 255 / 255.0;
+      break;
+    default: // dark red, fail
+      edge_marker.color.r = 128 / 255.0;
+      edge_marker.color.g = 0 / 255.0;
+      edge_marker.color.b = 0 / 255.0;
+      break;
+    }
+
+
   edge_marker.color.a = 1.0;
   edge_marker.lifetime = ros::Duration(shortest_paths_lifetime);
   edge_marker.frame_locked = false;

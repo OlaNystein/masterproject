@@ -91,6 +91,10 @@ class Visualization {
   void visualizeModPath(const std::vector<geometry_msgs::Pose> &path);
   void visualizeBlindModPath(const std::vector<geometry_msgs::Pose> &path);
 
+  void setId(int id){
+    id_ = id;
+  }
+
  private:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
@@ -130,7 +134,7 @@ class Visualization {
   const double robot_lifetime = 0;
   const double sampler_lifetime = 0;
   const double ray_lifetime = 0;
-
+  int id_;
   int best_path_id_;
   bool getHeatMapColor(float value, float &red, float &green, float &blue);
 };
