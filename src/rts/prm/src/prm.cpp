@@ -184,7 +184,7 @@ bool Prm::loadParams(){
 
   if (!global_space_params_.loadParams(ns + "/BoundedSpaceParams/Global")) return false;
 
-  if (!robot_dynamics_params_.loadParams(ns + "/RobotDynamics")) return false;
+  if (!robot_dynamics_params_.loadParams("pci_mav_ros_node/RobotDynamics")) return false;
 
   nh_.getParam(ns + "/num_robots", num_robots_);
 
@@ -270,6 +270,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   int num_edges_added(0);
   int num_target_neighbours(0);
 
+  std::vector<geometry_msgs::Pose> best_path_t;
 
   StateVec target_state;
   convertPoseMsgToState(target_pose, target_state);
@@ -415,51 +416,196 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     }
   } else {
     // Get the shortest path to current waypoint
-    roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, false, path_id_list);
+    double traverse_length = 0;
+    double traverse_time = 0;
+    std::vector<StateVec> best_path_states;
+    roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true, best_path_states);
+    Eigen::Vector3d p0(best_path_states[0][0], best_path_states[0][1], best_path_states[0][2]);
+    std::vector<Vertex*> best_path_vertices;
+    roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true,
+                                  best_path_vertices);
+
+    const double kLenMin = 1.0;
+    std::vector<Eigen::Vector3d> path_vec;
+    roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true,
+                                  path_vec);
+    double total_len = Trajectory::getPathLength(path_vec);
+    if (total_len <= kLenMin) {
+      ROS_WARN("Best path is too short.");
+      return Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
+    }
+
+    for (int i = 0; i < best_path_states.size(); ++i) {
+      Eigen::Vector3d p1(best_path_states[i][0], best_path_states[i][1], best_path_states[i][2]);
+      Eigen::Vector3d dir_vec = p1 - p0;
+      tf::Quaternion quat;
+      quat.setEuler(0.0, 0.0, best_path_states[i][3]);
+      tf::Vector3 origin(best_path_states[i][0], best_path_states[i][1], best_path_states[i][2]);
+      tf::Pose poseTF(quat, origin);
+      geometry_msgs::Pose pose;
+      tf::poseTFToMsg(poseTF, pose);
+      best_path_t.push_back(pose);
+      double seg_length = (p1 - p0).norm();
+      traverse_length += seg_length;
+      if ((traverse_length > planning_params_.traverse_length_max)) {
+        break;
+      }
+      p0 = p1;
+    }
+
+    roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true, path_id_list);
+    
     res = Prm::GraphStatus::OK;
- 
   }
 
-  // Creation of path data structure
-  // while (!path_id_list.empty()) {
-  //   int id = path_id_list.back();
-  //   path_id_list.pop_back();
-  //   StateVec state = roadmap_graph_->getVertex(id)->state;
-  //   tf::Quaternion quat;
-  //   quat.setEuler(0.0, 0.0, state[3]);
-  //   tf::Vector3 origin(state[0], state[1], state[2]);
-  //   tf::Pose poseTF(quat, origin);
-  //   geometry_msgs::Pose pose;
-  //   tf::poseTFToMsg(poseTF, pose);
-  //   best_path.push_back(pose);
-  // }
-  while (!path_id_list.empty()) {
-    geometry_msgs::Pose pose;
-    int id = path_id_list.back();
-    path_id_list.pop_back();
-    convertStateToPoseMsg(roadmap_graph_->getVertex(id)->state, pose);
-    best_path.push_back(pose);
-  }
 
-  // Yaw correction
-  if (planning_params_.yaw_tangent_correction) {
-    for (int i = 0; i < (best_path.size() - 1); ++i) {
-      Eigen::Vector3d vec(best_path[i + 1].position.x - best_path[i].position.x,
-                          best_path[i + 1].position.y - best_path[i].position.y,
-                          best_path[i + 1].position.z - best_path[i].position.z);
+  // collision checking
+  /*ROS_INFO("Path checking of unit %d, is %d long", active_id_, path_id_list.size());
+  for (auto& u: units_){
+    if ((u->id_ != active_id_)){
+      //ROS_INFO("helo1. %d", u->current_path_id_list_.size());
+      
+      double active_time = ros::Time::now().toSec();
+      double active_time_segment = 0;
+      // Iterate through segments in the current units path
+      for(int v_active_id = 0; v_active_id < path_id_list.size() - 1; v_active_id++){
+        // get first vertex in segment
+        Vertex* v0 = roadmap_graph_->getVertex(path_id_list[v_active_id]);
+        // get second vertex in segment
+        Vertex* v1 = roadmap_graph_->getVertex(path_id_list[v_active_id+1]);
+        // convert to vector
+        Eigen::Vector3d p0(v0->state.x(), v0->state.y(), v0->state.z());
+        // convert to vector
+        Eigen::Vector3d p1(v1->state.x(), v1->state.y(), v1->state.z());
+        // calculate segment vector
+        Eigen::Vector3d active_segment = p1 - p0;
+        active_time_segment = active_segment.norm()/planning_params_.v_max;
+        //ROS_INFO("ats: %f", active_segment.norm());
+        // timestamp start of segment
+        double t0 = active_time;
+
+        active_time += active_time_segment;
+        // timestamp end of segment
+        double t1 = active_time;
+        //ROS_INFO("t0: %f, t1: %f", t0, t1);
+        //---------------------Make segment-cuboid for collisionchecking----------------
+        Eigen::Vector3d active_center = (p1+p0)/2;
+        //ROS_INFO("acenter: x: %f, y: %f, z: %f", active_center[0], active_center[1], active_center[2]);
+        Eigen::Vector3d active_half_dim = robot_box_size_/2;
+        Eigen::Vector3d active_min_point = active_center - active_half_dim;
+        Eigen::Vector3d active_max_point = active_center + active_half_dim;
+        Eigen::AlignedBox3d active_cuboid(active_min_point, active_max_point);
+        
+
+          
+        if((u->currently_moving_)&& (!u->current_path_id_list_.empty())){
+        // Variable to keep tracked of checked time
+        double checked_time = u->moving_time_start_.toSec();
+        double checked_time_segment = 0;
+        // iterate through segments in all other unit paths
+        for(int v_check_id = 0; v_check_id < u->current_path_id_list_.size() - 1; v_check_id++){
+          //ROS_INFO("helo2");
+          // get first vertex in segment
+          Vertex* vc0 = roadmap_graph_->getVertex(u->current_path_id_list_[v_check_id]);
+          // get second vertex in segment
+          Vertex* vc1 = roadmap_graph_->getVertex(u->current_path_id_list_[v_check_id+1]);
+          // convert to vector
+          Eigen::Vector3d pc0(vc0->state.x(), vc0->state.y(), vc0->state.z());
+          // convert to vector
+          Eigen::Vector3d pc1(vc1->state.x(), vc1->state.y(), vc1->state.z());
+          // calculate segment vector
+          Eigen::Vector3d check_segment = pc1 - pc0;
+          // get the duration the other unit has been moving
+          //double time_diff = active_time - u_start_time;
+          // predict where the unit would be if it only moves along this segment
+          //Eigen::Vector3d predicted_segment = pc0 + (time_diff-checked_time)*planning_params_.v_max*check_segment.normalized();
+          // Add the time the robot has taken to complete the segment
+          //ROS_INFO("cts: %f", check_segment.norm());
+          checked_time_segment = check_segment.norm()/planning_params_.v_max;
+          // timestamp start of segment
+          double tc0 = checked_time;
+          checked_time += checked_time_segment;
+          // timestamp end of segment
+          double tc1 = checked_time;
+          //ROS_INFO("tc0: %f, tc1: %f", tc0, tc1);
+
+
+          //---------------------Make segment-cuboid for collisionchecking----------------
+          Eigen::Vector3d check_center = (pc1+pc0)/2;
+          //ROS_INFO("ccenter: x: %f, y: %f, z: %f", check_center[0], check_center[1], check_center[2]);
+          Eigen::Vector3d check_half_dim = robot_box_size_/2;
+          Eigen::Vector3d check_min_point = check_center - check_half_dim;
+          Eigen::Vector3d check_max_point = check_center + check_half_dim;
+          Eigen::AlignedBox3d check_cuboid(check_min_point, check_max_point);
+
+          if(!doCuboidsIntersect(active_cuboid, check_cuboid)){
+            //The segments with robot-size does not intersect, hence collision checking not required
+            //ROS_INFO("cuboidpass");
+            continue;
+          }
+          // If we go here, it means that a segment in the best path found by the planner potentially
+          // crosses with a path that is currently being executed by another unit
+          // and that the unit we may collide with has not executed the scary part yet
+          // We finally checks if the timing seems scary to see if the active robot should wait or not
+          if (!((t1 <= tc0)||(t0 >= tc1))){
+          //if(((abs(t1-tc1 < 1)) || abs(t0-tc0) < 1)){
+            // The timing ranges are scary
+            ROS_WARN("Planner detected possible collision, requeue at later time");
+            return Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
+          }
+          //ROS_INFO("timepass");
+          
+        }
+      } else if (!(u->currently_moving_)){
+      //check if path passes through idle robot
+      //---------------------Make segment-cuboid for collisionchecking----------------
+          Eigen::Vector3d check_center(u->current_state_.x(), u->current_state_.y(), u->current_state_.z());
+          
+          //ROS_INFO("ccenter: x: %f, y: %f, z: %f", check_center[0], check_center[1], check_center[2]);
+          Eigen::Vector3d check_half_dim = robot_box_size_/2;
+          Eigen::Vector3d check_min_point = check_center - check_half_dim;
+          //ROS_INFO("cdim: x: %f, y: %f, z: %f", check_half_dim[0], check_half_dim[1], check_half_dim[2]);
+          Eigen::Vector3d check_max_point = check_center + check_half_dim;
+          Eigen::AlignedBox3d check_cuboid(check_min_point, check_max_point);
+
+        
+
+          if(doCuboidsIntersect(active_cuboid, check_cuboid)){
+            //The path passes through an idle robot
+            ROS_INFO("idle collision");
+            return Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
+          }
+          //ROS_INFO("idle pass");
+
+        }
+      }
+    } 
+  }
+  */
+
+
+  units_[active_id_]->current_path_id_list_ = path_id_list;
+
+  for (int i = 0; i < (best_path_t.size() - 1); ++i) {
+      Eigen::Vector3d vec(best_path_t[i + 1].position.x - best_path_t[i].position.x,
+                          best_path_t[i + 1].position.y - best_path_t[i].position.y,
+                          best_path_t[i + 1].position.z - best_path_t[i].position.z);
       double yaw = std::atan2(vec[1], vec[0]);
       tf::Quaternion quat;
       quat.setEuler(0.0, 0.0, yaw);
-      best_path[i + 1].orientation.x = quat.x();
-      best_path[i + 1].orientation.y = quat.y();
-      best_path[i + 1].orientation.z = quat.z();
-      best_path[i + 1].orientation.w = quat.w();
-    }
+      best_path_t[i + 1].orientation.x = quat.x();
+      best_path_t[i + 1].orientation.y = quat.y();
+      best_path_t[i + 1].orientation.z = quat.z();
+      best_path_t[i + 1].orientation.w = quat.w();
   }
 
+  best_path = best_path_t;
 
 
-  visualization_->visualizeSampler(random_sampler_);
+
+
+
+  //visualization_->visualizeSampler(random_sampler_);
   visualization_->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_->visualizeGraph(roadmap_graph_);
@@ -860,6 +1006,12 @@ void Prm::printUnit(int unit_id){
   ROS_INFO("Active id: %d", active_id_);
   ROS_INFO("Current state is x: %f, y: %f, z: %f", units_[unit_id]->current_state_[0], units_[unit_id]->current_state_[1], units_[unit_id]->current_state_[2]);
 }
+
+bool Prm::doCuboidsIntersect(const Eigen::AlignedBox3d &cuboid1, const Eigen::AlignedBox3d &cuboid2)
+{
+    return (cuboid1.intersects(cuboid2) || cuboid2.intersects(cuboid1));
+}
+
 
 // Path improvers from gbplanner
 

@@ -54,6 +54,8 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
     std::pair<geometry_msgs::Pose, int> p(req.target_pose, req.unit_id);
     target_queue_.push_back(p);
     ROS_INFO("RIMAPP: Order from unit %d added to queue", req.unit_id);
+    prm_->setUnitMovingState(req.unit_id, false); //unit not currently moving
+
   } else {
     ROS_WARN("Tried to add order to nonexisting unit %d, not adding order", req.unit_id);
   }
@@ -88,6 +90,7 @@ void RIMAPP::runRimapp(){
       res.final_target_reached = prm_->getTargetReachedSingle(id);
       res.best_path = best_path;
       best_path_pub_.publish(res);
+      prm_->setUnitMovingState(id, true);
     }
     cont = ros::ok();
     ros::spinOnce();

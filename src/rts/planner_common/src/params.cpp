@@ -1194,7 +1194,7 @@ bool RobotDynamicsParams::loadParams(std::string ns) {
 
   param_name = ns + "/v_max";
   if (!ros::param::get(param_name, v_max)) {
-    v_max = 0.2;
+    v_max = 1.0;
     ROSPARAM_WARN(param_name, v_max);
   }
 

@@ -2,10 +2,10 @@
 
 namespace search{
 
-Upi::planner_cli::planner_cli(int id,const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
-    id_(id), nh_(nh), nh_private_(nh_private) {
+Upi::planner_cli::planner_cli(Upi* upi,int id,const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
+    upi_(upi), id_(id), nh_(nh), nh_private_(nh_private) {
   std::string uid = std::to_string(id);
-
+  
   
   
   while(!(planner_client_ = nh_.serviceClient<rimapp_msgs::pci_plan_path_single>(
@@ -13,6 +13,9 @@ Upi::planner_cli::planner_cli(int id,const ros::NodeHandle& nh, const ros::NodeH
     ROS_WARN("UPI: waiting for PCI-service %d", id);
     sleep(1);
   }
+
+  click_subscriber_ = nh_.subscribe("clicked_point_" + uid, 1, &Upi::planner_cli::clickCallback, this);
+
   ROS_INFO("UPI: connected to PCI %d", id);
 }
 
@@ -26,13 +29,16 @@ Upi::Upi(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
   nh_.getParam(ns + "/num_robots", num_robots_);
 
   for (int i = 0; i < num_robots_; i++){
-    planner_cli* p = new planner_cli(i, nh, nh_private);
+    planner_cli* p = new planner_cli(this, i, nh, nh_private);
     planner_clients_.push_back(p);
   }
-
-
-
   
+}
+
+void Upi::planner_cli::clickCallback(const geometry_msgs::PointStamped &p) {
+  ROS_INFO("You clicked, %f, %f", p.point.x, p.point.y);
+
+  upi_->callPciSimple(id_, p.point.x, p.point.y);
 }
 
 bool Upi::upiPlanServiceCallback(

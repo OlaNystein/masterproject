@@ -11,6 +11,7 @@
 #include "rimapp_msgs/upi_ma_planner.h"
 #include "rimapp_msgs/pci_plan_path_single.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PointStamped.h"
 
 namespace search {
 
@@ -24,13 +25,19 @@ class Upi {
 
   struct planner_cli {
 
-    planner_cli(int id, const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+    planner_cli(Upi* upi, int id, const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
 
     ros::ServiceClient planner_client_;
     int id_;
+
+    Upi* upi_;
+
+
+    ros::Subscriber click_subscriber_;
+    void clickCallback(const geometry_msgs::PointStamped &pt);
   };
 
   private:
@@ -59,7 +66,6 @@ class Upi {
 
   bool single_plan_req_;
 
-  void runService();
 
   bool callPci(int id, geometry_msgs::Pose pose);
 

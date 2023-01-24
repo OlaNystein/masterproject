@@ -70,6 +70,10 @@ class Prm {
     Prm::StateStatus target_status_;
     double pcl_clear_radius_;
 
+    std::vector<int> current_path_id_list_;
+    bool currently_moving_;
+    ros::Time moving_time_start_;
+
     int publish_throttle_it_;
 
     const std::vector<Prm::unit*>* units_for_pcl_;
@@ -140,6 +144,20 @@ class Prm {
   int getNumRobots(){
     return num_robots_;
   }
+
+  void setUnitMovingState(int id, bool moving){
+    if (id < getNumRobots()){
+      units_[id]->currently_moving_ = moving;
+      if (!moving){
+        units_[id]->current_path_id_list_.clear();
+      } else {
+        units_[id]->moving_time_start_ = ros::Time::now();
+      }
+    }
+    return;
+  }
+
+
   private:
   
   
@@ -206,6 +224,8 @@ class Prm {
   void expandGraph(std::shared_ptr<GraphManager> graph, StateVec& new_state, ExpandGraphReport& rep);
 
   bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
+
+  bool doCuboidsIntersect(const Eigen::AlignedBox3d &cuboid1, const Eigen::AlignedBox3d &cuboid2);
 
   void printUnit(int unit_id);
 
