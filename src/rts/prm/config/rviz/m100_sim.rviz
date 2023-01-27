@@ -7,7 +7,6 @@ Panels:
         - /Grid1
         - /Axes1
         - /Axes1/BaseLink1
-        - /Axes1/BaseLink1/Status1
         - /Odometry1/Shape1
         - /Odometry1/Covariance1
         - /PlannerViz1
@@ -26,15 +25,7 @@ Panels:
         - /POST1/MarkerArray1
         - /POST1/MarkerArray2
         - /POST1/MarkerArray3
-        - /BaseLink1
-        - /BaseLink2
-        - /BaseLink3
-        - /BaseLink4
-        - /BaseLink5
-        - /BaseLink6
-        - /BaseLink7
-        - /BaseLink8
-        - /BaseLink9
+        - /RobotModel1/Status1
       Splitter Ratio: 0.5446686148643494
     Tree Height: 605
   - Class: rviz/Selection
@@ -101,13 +92,13 @@ Visualization Manager:
           Value: false
         - Alpha: 1
           Class: rviz/Axes
-          Enabled: true
+          Enabled: false
           Length: 2
           Name: BaseLink
           Radius: 0.20000000298023224
           Reference Frame: m100_0/base_link
           Show Trail: false
-          Value: true
+          Value: false
         - Alpha: 1
           Class: rviz/Axes
           Enabled: true
@@ -249,7 +240,8 @@ Visualization Manager:
           Marker Topic: /vis/ref_path
           Name: RefPath
           Namespaces:
-            {}
+            ref_path: true
+            vertices: true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -303,8 +295,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: -0.021645665168762207
-            Min Value: -0.033029913902282715
+            Max Value: 2.7458770275115967
+            Min Value: 0.16733574867248535
             Value: true
           Axis: Z
           Channel Name: intensity
@@ -505,31 +497,31 @@ Visualization Manager:
       Value: true
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 2
       Name: BaseLink
       Radius: 0.20000000298023224
       Reference Frame: m100_1/base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 2
       Name: BaseLink
       Radius: 0.20000000298023224
       Reference Frame: m100_2/base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 2
       Name: BaseLink
       Radius: 0.20000000298023224
       Reference Frame: m100_3/base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Class: rviz/Image
       Enabled: true
       Image Topic: /rimapp_node/minimap
@@ -544,58 +536,478 @@ Visualization Manager:
       Value: true
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 2
       Name: BaseLink
       Radius: 0.20000000298023224
       Reference Frame: m100_4/base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 2
       Name: BaseLink
       Radius: 0.20000000298023224
       Reference Frame: m100_5/base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
-      Class: rviz/Axes
+      Class: rviz/RobotModel
+      Collision Enabled: false
       Enabled: true
-      Length: 2
-      Name: BaseLink
-      Radius: 0.20000000298023224
-      Reference Frame: m100_6/base_link
-      Show Trail: false
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_0/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_0/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_0/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_0/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_0/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_0/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_0/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_0/robot_description
+      TF Prefix: ""
+      Update Interval: 0
       Value: true
+      Visual Enabled: true
     - Alpha: 1
-      Class: rviz/Axes
+      Class: rviz/RobotModel
+      Collision Enabled: false
       Enabled: true
-      Length: 2
-      Name: BaseLink
-      Radius: 0.20000000298023224
-      Reference Frame: m100_7/base_link
-      Show Trail: false
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_1/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_1/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_1/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_1/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_1/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_1/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_1/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_1/robot_description
+      TF Prefix: ""
+      Update Interval: 0
       Value: true
+      Visual Enabled: true
     - Alpha: 1
-      Class: rviz/Axes
+      Class: rviz/RobotModel
+      Collision Enabled: false
       Enabled: true
-      Length: 2
-      Name: BaseLink
-      Radius: 0.20000000298023224
-      Reference Frame: m100_8/base_link
-      Show Trail: false
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_2/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_2/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_2/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_2/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_2/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_2/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_2/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_2/robot_description
+      TF Prefix: ""
+      Update Interval: 0
       Value: true
+      Visual Enabled: true
     - Alpha: 1
-      Class: rviz/Axes
+      Class: rviz/RobotModel
+      Collision Enabled: false
       Enabled: true
-      Length: 2
-      Name: BaseLink
-      Radius: 0.20000000298023224
-      Reference Frame: m100_9/base_link
-      Show Trail: false
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_3/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_3/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_3/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_3/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_3/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_3/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_3/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_3/robot_description
+      TF Prefix: ""
+      Update Interval: 0
       Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_4/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_4/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_4/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_4/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_4/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_4/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_4/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_4/robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        m100_5/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_5/base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_5/imugt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_5/odometry_sensor1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_5/odometry_sensorgt_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        m100_5/pc_case_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/rotor_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/rotor_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/rotor_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/rotor_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        m100_5/velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: m100_5/robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -618,6 +1030,7 @@ Visualization Manager:
     - Class: rviz/SetGoal
       Topic: /move_base_simple/goal
     - Class: rviz/PublishPoint
+      Name: Robot1
       Single click: true
       Topic: /clicked_point_0
     - Class: rviz/PublishPoint
@@ -639,7 +1052,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 128.0609588623047
+      Distance: 117.38725280761719
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -647,17 +1060,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 118.34980773925781
-        Y: 9.934738159179688
-        Z: -16.257692337036133
+        X: 113.14850616455078
+        Y: 6.864968776702881
+        Z: -29.68606185913086
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1797974556684494
+      Pitch: 0.2897973656654358
       Target Frame: <Fixed Frame>
-      Yaw: 3.2353878021240234
+      Yaw: 3.2103874683380127
     Saved: ~
 Window Geometry:
   Displays:

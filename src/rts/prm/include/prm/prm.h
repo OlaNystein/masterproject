@@ -34,7 +34,7 @@
 namespace search{
 namespace prm{
 
-
+std::vector<double> withoutHiLo(std::vector<double> orig); 
 
 class Prm {
   public:
@@ -212,6 +212,8 @@ class Prm {
   int planning_num_vertices_max_;
   int planning_num_edges_max_;
 
+  ros::Time ttime;
+
   //---------------------FUNCTIONS----------------------
   void detectUnitStatus(int unit_id);
 
@@ -267,6 +269,22 @@ class Prm {
     else if (x < -M_PI)
       x += 2 * M_PI;
   }
+
+  // Results variables
+  double total_build_time_;//
+  int total_already_exists_;//
+  double total_path_extraction_;//
+  double total_path_optimality_;
+
+  // Vectors for standard deviation
+  std::vector<double> build_times_;
+  std::vector<double> path_optimalities_;
+
+  int num_queries_;//
+
+
+  void printStats(int n_q);
+
 
 };
 

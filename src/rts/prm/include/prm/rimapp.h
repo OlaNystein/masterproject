@@ -47,7 +47,10 @@ class RIMAPP {
   Upi* upi_;
 
 
-
+  std::vector<double> latencies_;
+  std::vector<double> all_latencies_;
+  std::vector<ros::Time*> timers_;
+  int num_queries_;
   
 
   std::vector<std::pair<geometry_msgs::Pose, int>> target_queue_;
@@ -59,7 +62,7 @@ class RIMAPP {
     rimapp_msgs::plan_path_single::Request& req,
     rimapp_msgs::plan_path_single::Response& res);
 
-
+  void printLatency();
 };
 
 

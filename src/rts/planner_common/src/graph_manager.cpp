@@ -354,6 +354,10 @@ bool GraphManager::getPairDistanceMatrix(Eigen::MatrixXd& distance_matrix) {
   return true;
 }
 
+int GraphManager::getNumOutgoingEdges(int vertex_id){
+  return edge_map_[vertex_id].size();
+}
+
 
 // namespace ros
 // {

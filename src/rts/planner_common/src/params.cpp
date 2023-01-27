@@ -1087,6 +1087,13 @@ bool PlanningParams::loadParams(std::string ns) {
     ROSPARAM_WARN(param_name, robot_name);
   }
 
+  param_name = ns + "/max_num_outgoing";
+  if (!ros::param::get(param_name, max_num_outgoing)) {
+    max_num_outgoing = 20;
+    ROSPARAM_WARN(param_name, max_num_outgoing);
+  }
+
+
   // RRT* params
   param_name = ns + "/proximity_to_waypoint";
   if (!ros::param::get(param_name, proximity_to_waypoint)) {

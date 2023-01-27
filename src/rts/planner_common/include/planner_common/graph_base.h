@@ -18,6 +18,7 @@ struct SampleStatistic {
         compute_exp_gain_time(0),
         shortest_path_time(0),
         evaluate_graph_time(0),
+        collision_check_time(0),
         total_time(0) {}
   StateVec current_state;
   int num_vertices_fail;
@@ -28,34 +29,33 @@ struct SampleStatistic {
   double compute_exp_gain_time;
   double shortest_path_time;
   double evaluate_graph_time;
+  double collision_check_time;
   double total_time;
   void init(StateVec &state) { current_state = state; }
 
   void printTime() {
-    total_time = build_graph_time + compute_exp_gain_time + shortest_path_time +
-                 evaluate_graph_time;
+    total_time = build_graph_time + shortest_path_time +
+                 collision_check_time;
     ROS_INFO(
         "Time statistics:\n \
         Build graph    : %3.3f (s)\n \
-        Compute gain   : %3.3f (s)\n \
         Dijkstra       : %3.3f (s)\n \
-        Evaluate graph : %3.3f (s)\n \
+        Collisioncheck : %3.3f (s)\n \
         Total          : %3.3f (s)",
-        build_graph_time, compute_exp_gain_time, shortest_path_time,
-        evaluate_graph_time, total_time);
+        build_graph_time, shortest_path_time,collision_check_time,
+        total_time);
   }
   void printTime(std::string title) {
-    total_time = build_graph_time + compute_exp_gain_time + shortest_path_time +
-                 evaluate_graph_time;
+    total_time = build_graph_time  + shortest_path_time +
+                 collision_check_time;
     ROS_INFO(
         "Time statistics (%s):\n \
         Build graph    : %3.3f (ms)\n \
-        Compute gain   : %3.3f (ms)\n \
         Dijkstra       : %3.3f (ms)\n \
-        Evaluate graph : %3.3f (ms)\n \
+        Collisioncheck : %3.3f (ms)\n \
         Total          : %3.3f (ms)",
-        title.c_str(), build_graph_time, compute_exp_gain_time, shortest_path_time,
-        evaluate_graph_time, total_time);
+        title.c_str(), build_graph_time, shortest_path_time, collision_check_time,
+        total_time);
   }
 };
 

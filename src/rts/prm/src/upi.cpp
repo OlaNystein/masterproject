@@ -38,7 +38,7 @@ Upi::Upi(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
 void Upi::planner_cli::clickCallback(const geometry_msgs::PointStamped &p) {
   ROS_INFO("You clicked, %f, %f", p.point.x, p.point.y);
 
-  upi_->callPciSimple(id_, p.point.x, p.point.y);
+  upi_->callPciSimple(id_, p.point.x, p.point.y, p.point.z);
 }
 
 bool Upi::upiPlanServiceCallback(
@@ -56,7 +56,7 @@ bool Upi::upiMAPlanServiceCallback(
   
   res.success = false;
   for (int i = 0; i < req.targets.size(); i++ ){
-    res.success = callPciSimple(req.targets[i].unit_id, req.targets[i].x_target, req.targets[i].y_target);
+    res.success = callPciSimple(req.targets[i].unit_id, req.targets[i].x_target, req.targets[i].y_target, req.targets[i].y_target);
   }
   
   return res.success;
@@ -78,12 +78,12 @@ bool Upi::callPci(int id, geometry_msgs::Pose pose){
   }
 }
 
-bool Upi::callPciSimple(int id, int x_target, int y_target){
+bool Upi::callPciSimple(int id, int x_target, int y_target, int z_target){
   rimapp_msgs::pci_plan_path_single upi_srv;
   geometry_msgs::Pose target_pose;
   target_pose.position.x = x_target;
   target_pose.position.y = y_target;
-  target_pose.position.z = 2;
+  target_pose.position.z = z_target + 2;
   target_pose.orientation.x = 0;
   target_pose.orientation.y = 0;
   target_pose.orientation.z = 0;

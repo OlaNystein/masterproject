@@ -38,12 +38,12 @@ SensorParams:
 BoundedSpaceParams:
   Global:
     type:           kCuboid
-    min_val:        [0.0 , -200.0, 1.0]
-    max_val:        [500.0, 200.0, 4.0]
+    min_val:        [-500.0 , -500.0, 1.0]
+    max_val:        [500.0, 500.0, 7.0]
   Local:
     type:           kCuboid
-    min_val:        [-15.0, -15.0, -1.0]
-    max_val:        [15.0, 15.0, 1.0]
+    min_val:        [-10.0, -10.0, -1.0]
+    max_val:        [10.0, 10.0, 1.0]
     # min_val:        [-3.0, -5.0, -1.0]
     # max_val:        [8.0, 5.0, 1.0]
     min_extension:  [-20.0, -20.0, -3.0]
@@ -103,15 +103,15 @@ PlanningParams:
   yaw_tangent_correction: true
   v_max:            1.5
   edge_length_min:  0.2
-  edge_length_max:  3
+  edge_length_max:  6
   edge_overshoot:   0.0
   num_vertices_max: 500 # per planning iteration
-  num_edges_max:    3000
+  num_edges_max:    300000
   num_loops_cutoff: 2000
-  num_loops_max:    20000
+  num_loops_max:    100000
   nearest_range:    3.0
   nearest_range_min: 0.35 # >= edge_length_min
-  nearest_range_max: 3.0 # <= edge_length_max
+  nearest_range_max: 5.0 # <= edge_length_max
   use_current_state: true
   use_ray_model_for_volumetric_gain: true
   path_length_penalty: 0.02
@@ -120,7 +120,7 @@ PlanningParams:
   occupied_voxel_gain: 0.0
   free_voxel_gain:  2.0 #prefer directions towards more free voxels in case of the dead-end
   unknown_voxel_gain: 50.0
-  traverse_length_max: 7.0
+  traverse_length_max: 20.0
   traverse_time_max: 40.0
   augment_free_voxels_time: 1
   free_frustum_before_planning: false
@@ -132,6 +132,7 @@ PlanningParams:
   proximity_to_waypoint: 2.0 #how close to waypoint when starting planning of next segment
   initial_planning_time: 2.0
   freespace_cloud_enable: true
+  max_num_outgoing: 16
 
 
 GeofenceParams:

@@ -78,6 +78,8 @@ class GraphManager {
 
   bool getPairDistanceMatrix(Eigen::MatrixXd& distance_matrix);
 
+  int getNumOutgoingEdges(int vertex_id);
+
   // A wrapper on top of Boost Graph Lib.
   // Maintain a simple graph with IDs and weights.
   std::shared_ptr<Graph> graph_;

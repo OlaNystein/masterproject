@@ -71,6 +71,10 @@ PlannerControlInterface::PlannerControlInterface(
 void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg){
   //ROS_INFO("PCI: MSG recieved %d", active_id_);
   if (msg.unit_id == active_id_){
+    if (msg.best_path.size() < 1){
+      ROS_WARN("PCI: Unit %d got empty path, requeue a different target.", active_id_);
+      return;
+    }
     current_path_ = msg.best_path;
     ROS_INFO("PCI: Unit %d updated current path", active_id_);
     executePath();

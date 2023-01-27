@@ -3,6 +3,7 @@
 namespace search{
 namespace prm{
 
+
 Prm::unit::unit(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh), nh_private_(nh_private), tf_listener_(nh){
  reached_final_target_ = false;
  target_status_ = Prm::StateStatus::UNINITIALIZED;
@@ -90,7 +91,11 @@ Prm::Prm(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private): nh_(nh),
     ros::shutdown();
   }
 
-
+  total_build_time_ = 0;
+  total_already_exists_ = 0;
+  total_path_extraction_ = 0;
+  total_path_optimality_ = 0;
+  num_queries_ = 0;
 
   for (int i = 0; i < num_robots_; i++){
     unit* u = new unit(nh_, nh_private_);
@@ -123,49 +128,6 @@ void Prm::hardReset(){
 
 }
 
-void Prm::softReset(){
-  // ROS_WARN("before statinit");
-  // StateVec root_state = units_[active_id_]->current_state_;
-  // ROS_WARN("middle state, x: %f, y: %f, z: %f", root_state.x(), root_state.y(), root_state.z());
-
-  // stat_->init(root_state);
-  // //--------where to put code under?
-  // ROS_WARN("after statinit and before adding vertex");
-
-  // Vertex* root_vertex = new Vertex(roadmap_graph_->generateVertexID(), root_state);
-  // roadmap_graph_->addVertex(root_vertex);
-  // ROS_WARN("after addvertex");
-
-  // // First check if this position is free to go.
-  // MapManager::VoxelStatus voxel_state = map_manager_->getBoxStatus(
-  //   Eigen::Vector3d(root_state[0], root_state[1], root_state[2]) +
-  //       robot_params_.center_offset,
-  //   robot_box_size_, true);
-  // if (MapManager::VoxelStatus::kFree != voxel_state) {
-  //   switch (voxel_state) {
-  //     case MapManager::VoxelStatus::kFree:
-  //       ROS_INFO("Current box is Free.");
-  //       break;
-  //     case MapManager::VoxelStatus::kOccupied:
-  //       ROS_INFO("Current box contains Occupied voxels.");
-  //       break;
-  //     case MapManager::VoxelStatus::kUnknown:
-  //       ROS_INFO("Current box contains Unknown voxels.");
-  //       break;
-  //   }
-  //   // Assume that even it is not fully free, but safe to clear these voxels.
-  //   ROS_WARN("Starting position is not clear--> clear space around the robot.");
-  //   map_manager_->augmentFreeBox(
-  //       Eigen::Vector3d(root_state[0], root_state[1], root_state[2]) +
-  //           robot_params_.center_offset,
-  //       robot_box_size_);
-  //   }
-
-  //   visualization_[active_id_]->visualizeRobotState(root_vertex->state, robot_params_);
-  //   visualization_[active_id_]->visualizeSensorFOV(root_vertex->state, sensor_params_);
-  //   visualization_[active_id_]->visualizeWorkspace(
-  //       root_vertex->state, global_space_params_, local_space_params_);
-}
 
 bool Prm::loadParams(){
   std::string ns = ros::this_node::getName();
@@ -202,7 +164,7 @@ bool Prm::loadParams(){
 }
 
 void Prm::initializeParams(){
-  random_sampler_.setParams(global_space_params_, local_space_params_);
+  random_sampler_.setParams(local_space_params_, local_space_params_);
 
   // Precompute robot box size for planning
   robot_params_.getPlanningSize(robot_box_size_);
@@ -218,7 +180,6 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
   std::vector<geometry_msgs::Pose> best_path;
   best_path.clear();
   // Find status of active unit in relation to the graph
-
   detectUnitStatus(active_id_);
   Prm::StateStatus unit_status = units_[active_id_]->unit_status_;
 
@@ -233,7 +194,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
     return best_path;
   }
   if (unit_status == Prm::StateStatus::ERROR){
-    ROS_WARN("Could not add state to graph");
+    ROS_WARN("Could not connect state to graph");
     return best_path;
   }
   if (unit_status == Prm::StateStatus::EMPTYGRAPH){
@@ -244,7 +205,7 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
     ROS_INFO("Unit is disconnected from graph, adding current state as vertex for new graph segment");
     addStartVertex();
   }
-  
+
   units_[active_id_]->reached_final_target_ = false;
   Prm::GraphStatus status = planPath(target_pose, best_path);
   if (best_path.size() == 1) {
@@ -264,10 +225,12 @@ std::vector<geometry_msgs::Pose> Prm::runPlanner(geometry_msgs::Pose& target_pos
       ROS_INFO("Found path to execute");
       break;
   }
+  printStats(num_queries_);
   return best_path;
 }
 
 Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geometry_msgs::Pose>& best_path){
+  START_TIMER(ttime);
   // tuning parameters
   int loop_count(0);
   int num_vertices_added(0);
@@ -313,6 +276,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     stop_sampling = true;
     num_target_neighbours++;
     units_[active_id_]->reached_final_target_ = true;
+    total_already_exists_++;
   }
 
   std::vector<Vertex*> target_neighbours;
@@ -320,16 +284,17 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   stat_->init(units_[active_id_]->current_vertex_->state);
 
   
-  //ROS_INFO("Current state of unit %d: %f %f %f", active_id_, units_[active_id_]->current_state_[0], units_[active_id_]->current_state_[1], units_[active_id_]->current_state_[2]);
-  // Eigen
-  // random_sampler_.setBound()
+
 
   while ((!stop_sampling)&&(loop_count++ < planning_params_.num_loops_max) && 
     (num_vertices_added < planning_num_vertices_max_) &&
     (num_edges_added < planning_num_edges_max_)) {
     StateVec new_state;
     if (!sampleVertex(new_state)) {
-      //ROS_INFO("x: %f y: %f z: :f", new_state.x(), new_state.y(), new_state.z());
+      if ((loop_count >= planning_params_.num_loops_cutoff) && 
+        (num_vertices_added <= 2)) {
+      break;
+      }
       continue; // skip invalid sample
     }
 
@@ -346,11 +311,9 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       
       // Check if sampled vertex is close enough to target area
       if (radius_vec.norm() < random_sampling_params_->reached_target_radius) {
-        //ROS_WARN("TARGET SAMPLED");
         target_neighbours.push_back(rep.vertex_added);
         num_target_neighbours++;
         units_[active_id_]->reached_final_target_ = true;
-        //placeholder before adding pathsort
         units_[active_id_]->current_waypoint_ = target_neighbours[0];
         //
         if (num_target_neighbours > random_sampling_params_->num_paths_to_target_max){
@@ -364,13 +327,11 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
         units_[active_id_]->current_waypoint_ = rep.vertex_added;
       }
     }
-
     if ((loop_count >= planning_params_.num_loops_cutoff) && 
-        (roadmap_graph_->getNumVertices() <= 1)) {
+        (num_vertices_added <= 2)) {
       break;
     }
   }
-
   ROS_INFO("Formed a graph with [%d] vertices and [%d] edges with [%d] loops, ntn[%d]",
           roadmap_graph_->getNumVertices(), roadmap_graph_->getNumEdges(), loop_count, num_target_neighbours);
   
@@ -380,6 +341,11 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     ROS_WARN("Sampler failed, try again");
     return res;
   }
+  stat_->build_graph_time = GET_ELAPSED_TIME(ttime);
+  if(stat_->build_graph_time > 0.05){
+    build_times_.push_back(stat_->build_graph_time);
+  } 
+  total_build_time_ += stat_->build_graph_time;
 
   if (num_target_neighbours < 1) {
     Vertex* waypoint;
@@ -387,6 +353,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     units_[active_id_]->current_waypoint_ = waypoint;
     ROS_INFO("Target not yet reached by roadmap, updated waypoint as best vertex");
   }
+  START_TIMER(ttime);
   std::vector<int> path_id_list;
   roadmap_graph_rep_.reset();
   roadmap_graph_->findShortestPaths(units_[active_id_]->current_vertex_->id, roadmap_graph_rep_);
@@ -429,7 +396,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true,
                                   best_path_vertices);
 
-    const double kLenMin = 1.0;
+    const double kLenMin = 0.5;
     std::vector<Eigen::Vector3d> path_vec;
     roadmap_graph_->getShortestPath(units_[active_id_]->current_waypoint_->id, roadmap_graph_rep_, true,
                                   path_vec);
@@ -461,11 +428,13 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     
     res = Prm::GraphStatus::OK;
   }
-
-
+  stat_->shortest_path_time = GET_ELAPSED_TIME(ttime);
+  total_path_extraction_ += stat_->shortest_path_time;
+  ros::Time cctime;
+  START_TIMER(cctime);
   // collision checking
-  /*ROS_INFO("Path checking of unit %d, is %d long", active_id_, path_id_list.size());
-  for (auto& u: units_){
+  ROS_INFO("Path checking of unit %d, is %d long", active_id_, path_id_list.size());
+  /*for (auto& u: units_){
     if ((u->id_ != active_id_)){
       //ROS_INFO("helo1. %d", u->current_path_id_list_.size());
       
@@ -562,6 +531,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
         }
       } else if (!(u->currently_moving_)){
       //check if path passes through idle robot
+
       //---------------------Make segment-cuboid for collisionchecking----------------
           Eigen::Vector3d check_center(u->current_state_.x(), u->current_state_.y(), u->current_state_.z());
           
@@ -572,9 +542,17 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
           Eigen::Vector3d check_max_point = check_center + check_half_dim;
           Eigen::AlignedBox3d check_cuboid(check_min_point, check_max_point);
 
+      //---------------------Make vertex-cuboid for collisionchecking----------------
+        Eigen::Vector3d vertex_center = p1;
+        //ROS_INFO("acenter: x: %f, y: %f, z: %f", active_center[0], active_center[1], active_center[2]);
+        Eigen::Vector3d vertex_half_dim = robot_box_size_/2;
+        Eigen::Vector3d vertex_min_point = vertex_center - vertex_half_dim;
+        Eigen::Vector3d vertex_max_point = vertex_center + vertex_half_dim;
+        Eigen::AlignedBox3d vertex_cuboid(vertex_min_point, vertex_max_point);
+
         
 
-          if(doCuboidsIntersect(active_cuboid, check_cuboid)){
+          if(doCuboidsIntersect(active_cuboid, check_cuboid) || doCuboidsIntersect(vertex_cuboid, check_cuboid)){
             //The path passes through an idle robot
             ROS_INFO("idle collision");
             return Prm::GraphStatus::ERR_NO_FEASIBLE_PATH;
@@ -587,9 +565,10 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
   */
 
-
+  stat_->collision_check_time = GET_ELAPSED_TIME(cctime);
   units_[active_id_]->current_path_id_list_ = path_id_list;
   if (!(best_path_temp.empty())){
+    num_queries_++;
     double yawhalf = units_[active_id_]->current_state_[3] * 0.5;
     best_path_temp[0].orientation.x = 0.0;
     best_path_temp[0].orientation.y = 0.0;
@@ -610,12 +589,25 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   }
 
   best_path = best_path_temp;
+  if (!(best_path.empty())){
+    double total_len = Trajectory::getPathLength(best_path);
+    Eigen::Vector3d opt_vec(units_[active_id_]->current_state_[0] - best_path[best_path.size()-1].position.x,
+                            units_[active_id_]->current_state_[1] - best_path[best_path.size()-1].position.y,
+                            units_[active_id_]->current_state_[2] - best_path[best_path.size()-1].position.z);
+    double opt_dist = opt_vec.norm();
+    ROS_INFO("total lenth: %f, dir distance: %f, nq: %d",total_len, opt_dist, num_queries_);
+    double optimality = total_len/opt_dist;
+    total_path_optimality_ += optimality;
+    path_optimalities_.push_back(optimality);
+
+  }
 
 
 
 
 
-  //visualization_[active_id_]->visualizeSampler(random_sampler_);
+
+  visualization_[active_id_]->visualizeSampler(random_sampler_);
   visualization_[active_id_]->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_[active_id_]->visualizeGraph(roadmap_graph_);
@@ -625,6 +617,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     stat_->num_vertices_fail, stat_->num_edges_fail);
     res = Prm::GraphStatus::ERR_KDTREE;
   }
+  stat_->printTime();
   return res;
 }
 
@@ -635,14 +628,13 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
   
   if (!roadmap_graph_->getNearestVertex(&new_state, &nearest_vertex)) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
-
     return;
   }
   if (nearest_vertex == NULL) {
     rep.status = ExpandGraphStatus::kErrorKdTree;
-
     return;
   }
+  ROS_INFO("Nearest vertex, x: %f, y: %f, z: %f", nearest_vertex->state[0], nearest_vertex->state[1], nearest_vertex->state[2]);
   // Check for collision of new connection plus some overshoot distance.
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
@@ -695,28 +687,34 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
       return;
     }
     origin << new_vertex->state[0],new_vertex->state[1],new_vertex->state[2];
+    ROS_INFO("nearest_v size: %d", nearest_vertices.size());
     for (int i = 0; i < nearest_vertices.size(); ++i) {
-      direction << nearest_vertices[i]->state[0] - origin[0],
-          nearest_vertices[i]->state[1] - origin[1],
-          nearest_vertices[i]->state[2] - origin[2];
-      double d_norm = direction.norm();
-      
-      if ((d_norm > planning_params_.nearest_range_min) &&
-          (d_norm < planning_params_.nearest_range_max)) {
-        Eigen::Vector3d p_overshoot =
-            direction / d_norm * planning_params_.edge_overshoot;
-        Eigen::Vector3d p_start =
-            origin + robot_params_.center_offset - p_overshoot;
-        Eigen::Vector3d p_end =
-            origin + robot_params_.center_offset + direction;
-        if (nearest_vertices[i]->id != 0) p_end = p_end + p_overshoot;
-        // Check collision if lazy mode is not activated
-        if (MapManager::VoxelStatus::kFree ==
-              map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true) || lazy_mode_) {
-            roadmap_graph_->addEdge(new_vertex, nearest_vertices[i], d_norm);
-            ++rep.num_edges_added;
+        //ROS_WARN("noe: %d" ,roadmap_graph_->getNumOutgoingEdges(nearest_vertices[i]->id));
+        if (roadmap_graph_->getNumOutgoingEdges(nearest_vertices[i]->id) >= planning_params_.max_num_outgoing){
+          // Constraint the amount of outgoing edges per vertex
+          continue;
         }
-      }
+        direction << nearest_vertices[i]->state[0] - origin[0],
+            nearest_vertices[i]->state[1] - origin[1],
+            nearest_vertices[i]->state[2] - origin[2];
+        double d_norm = direction.norm();
+        
+        if ((d_norm > planning_params_.nearest_range_min) &&
+            (d_norm < planning_params_.nearest_range_max)) {
+          Eigen::Vector3d p_overshoot =
+              direction / d_norm * planning_params_.edge_overshoot;
+          Eigen::Vector3d p_start =
+              origin + robot_params_.center_offset - p_overshoot;
+          Eigen::Vector3d p_end =
+              origin + robot_params_.center_offset + direction;
+          if (nearest_vertices[i]->id != 0) p_end = p_end + p_overshoot;
+          // Check collision if lazy mode is not activated
+          if (MapManager::VoxelStatus::kFree ==
+                map_manager_->getPathStatus(p_start, p_end, robot_box_size_, true) || lazy_mode_) {
+              roadmap_graph_->addEdge(new_vertex, nearest_vertices[i], d_norm);
+              ++rep.num_edges_added;
+          }
+        }
     }
     
   } else {
@@ -782,9 +780,9 @@ void Prm::detectUnitStatus(int unit_id){
     return;
   } else {
     units_[unit_id]->unit_status_ = Prm::StateStatus::DISCONNECTED;
-    ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", unit_id);
+    ROS_WARN("Unit %d is to far from the established graph, start a new graph segment", unit_id);  
   }
-  
+  return;
 }
 
 void Prm::detectTargetStatus(int unit_id){
@@ -821,7 +819,7 @@ void Prm::detectTargetStatus(int unit_id){
     ROS_WARN("Target %d is too far from the established graph, start sampler to expand", unit_id);
     return;
   }
-  
+  return;
 }
 
 
@@ -950,7 +948,7 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
                               StateVec& cur_state, Vertex*& v_added,
                               double dist_ignore_collision_check) {
   Vertex* nearest_vertex = NULL;
-  if (!graph->getNearestVertex(&cur_state, &nearest_vertex)) return false;
+  if (!roadmap_graph_->getNearestVertex(&cur_state, &nearest_vertex)) return false;
   if (nearest_vertex == NULL) return false;
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
@@ -962,16 +960,16 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
   if (direction_norm <= kDelta) {
     // Add edges only from this vertex.
     ExpandGraphReport rep;
-    expandGraphEdges(graph, nearest_vertex, rep);
+    expandGraphEdges(roadmap_graph_, nearest_vertex, rep);
     v_added = nearest_vertex;
   } else if (direction_norm <= std::max(dist_ignore_collision_check,
                                         planning_params_.edge_length_min)) {
     // Blindly add a link/vertex to the graph if small radius.
-    Vertex* new_vertex = new Vertex(graph->generateVertexID(), cur_state);
+    Vertex* new_vertex = new Vertex(roadmap_graph_->generateVertexID(), cur_state);
     new_vertex->parent = nearest_vertex;
     new_vertex->distance = nearest_vertex->distance + direction_norm;
-    graph->addVertex(new_vertex);
-    graph->addEdge(new_vertex, nearest_vertex, direction_norm);
+    roadmap_graph_->addVertex(new_vertex);
+    roadmap_graph_->addEdge(new_vertex, nearest_vertex, direction_norm);
     // Add edges only from this vertex.
     ExpandGraphReport rep;
     expandGraphEdges(graph, new_vertex, rep);
@@ -979,10 +977,11 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
   } else {
     ROS_WARN("[GlobalGraph] Try to add current state to the graph.");
     ExpandGraphReport rep;
-    expandGraph(graph, cur_state, rep);
+    expandGraph(roadmap_graph_, cur_state, rep);
     if (rep.status == ExpandGraphStatus::kSuccess) {
       ROS_WARN("[GlobalGraph] Added successfully.");
       v_added = rep.vertex_added;
+      ROS_INFO("x: %f, y: %f, z: %f, nume %d, numvg: %d, numvr: %d", v_added->state[0], v_added->state[1], v_added->state[2], rep.num_edges_added, graph->getNumVertices(), roadmap_graph_->getNumVertices());
     } else {
       // Not implemented solution for this case yet.
       connect_state_to_graph = false;
@@ -1022,6 +1021,37 @@ bool Prm::doCuboidsIntersect(const Eigen::AlignedBox3d &cuboid1, const Eigen::Al
     return (cuboid1.intersects(cuboid2) || cuboid2.intersects(cuboid1));
 }
 
+void Prm::printStats(int n_q){
+  ROS_INFO("%d", n_q);
+  double avg_build_time = total_build_time_/(n_q-total_already_exists_);
+  double avg_path_ex = total_path_extraction_/n_q;
+  double existrate = ((float)total_already_exists_)/((float)n_q);
+  double avg_opt = total_path_optimality_/n_q;
+  ROS_INFO(
+        "Statistics :\n \
+        Total build graph     : %3.3f (ms)\n \
+        Average build time    : %3.3f (ms)\n \
+        Avg Path extraction   : %3.3f (ms)\n \
+        Existrate             : %3.3f percent\n \
+        Avg Optimality        : %3.3f \n \
+        Num queries           : %d",
+        total_build_time_, avg_build_time, 
+        avg_path_ex, existrate, avg_opt, n_q);
+
+  if (build_times_.size() > 0){
+    std::vector<double> diff(build_times_.size());
+    std::transform(build_times_.begin(), build_times_.end(), diff.begin(), std::bind2nd(std::minus<double>(), avg_build_time));
+    double bt_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+    double bt_stdev = std::sqrt(bt_sum/(diff.size()));
+    ROS_INFO("std dev of build times: %3.3f", bt_stdev);
+  }
+  if (path_optimalities_.size() > 0){
+    double po_sum = std::inner_product(path_optimalities_.begin(), path_optimalities_.end(), path_optimalities_.begin(), 0.0);
+    double po_stdev = std::sqrt(po_sum/(path_optimalities_.size()) - avg_opt*avg_opt);
+    ROS_INFO("std dev of path optimality: %3.3f", po_stdev);
+  }
+
+}
 
 // Path improvers from gbplanner
 

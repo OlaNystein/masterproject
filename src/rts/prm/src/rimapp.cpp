@@ -19,6 +19,13 @@ namespace search {
   plan_service_ = nh_.advertiseService("rimapp/plan", &RIMAPP::planServiceCallback, this);
   ROS_WARN("rimapp service advertised");
 
+  num_queries_ = 0;
+  for( int i = 0; i < prm_->getNumRobots(); i++){
+    latencies_.push_back(0.0);
+    ros::Time t;
+    timers_.push_back(&t);
+  }
+
   runRimapp();
 
   }
@@ -54,6 +61,8 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
     std::pair<geometry_msgs::Pose, int> p(req.target_pose, req.unit_id);
     target_queue_.push_back(p);
     ROS_INFO("RIMAPP: Order from unit %d added to queue", req.unit_id);
+    num_queries_++;
+    START_TIMER(*(timers_[req.unit_id]));
     prm_->setUnitMovingState(req.unit_id, false); //unit not currently moving
 
   } else {
@@ -61,6 +70,20 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
   }
   res.success = true;
   return true;
+}
+
+void RIMAPP::printLatency(){
+  double lat_sum = 0;
+  for(int i = 0; i < latencies_.size(); i++){
+    lat_sum += latencies_[i];
+  }
+  double avg_lat = lat_sum/num_queries_;
+  ROS_INFO("avg latency: %3.3f", avg_lat);
+  if (all_latencies_.size() > 0){
+    double lat_sum = std::inner_product(all_latencies_.begin(), all_latencies_.end(), all_latencies_.begin(), 0.0);
+    double lat_stdev = std::sqrt(lat_sum/(all_latencies_.size()) - avg_lat*avg_lat);
+    ROS_INFO("std dev of latencies: %3.3f", lat_stdev);
+  }
 }
 
 
@@ -75,11 +98,15 @@ void RIMAPP::runRimapp(){
       target_queue_.erase(target_queue_.begin());
       ROS_INFO("Target queue size: %d", target_queue_.size());
       prm_->setActiveUnit(id);
+      double lt = GET_ELAPSED_TIME(*(timers_[id]));
+      latencies_[id] += lt;
+      all_latencies_.push_back(lt);
+      ROS_INFO("latency: %f", latencies_[id]);
       std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
       //publish results to pci-bestpath topic med ID, riktig pci kjører drone
       
       if (best_path.size() <= 1) {
-        ROS_WARN("RIMAPP: No best path returned");
+        ROS_WARN("RIMAPP: No best path returned requeue a different target");
       }
       if (best_path.size() > 1){
         ROS_WARN("RIMAPP: Best path found");
@@ -91,6 +118,7 @@ void RIMAPP::runRimapp(){
       res.best_path = best_path;
       best_path_pub_.publish(res);
       prm_->setUnitMovingState(id, true);
+      printLatency();
     }
     cont = ros::ok();
     ros::spinOnce();

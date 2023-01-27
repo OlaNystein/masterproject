@@ -69,7 +69,7 @@ class Upi {
 
   bool callPci(int id, geometry_msgs::Pose pose);
 
-  bool callPciSimple(int id, int x_target, int y_target);
+  bool callPciSimple(int id, int x_target, int y_target, int z_target);
 
 };
 
