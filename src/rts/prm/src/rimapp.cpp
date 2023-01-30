@@ -74,8 +74,8 @@ bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
 
 void RIMAPP::printLatency(){
   double lat_sum = 0;
-  for(int i = 0; i < latencies_.size(); i++){
-    lat_sum += latencies_[i];
+  for(int i = 0; i < all_latencies_.size(); i++){
+    lat_sum += all_latencies_[i];
   }
   double avg_lat = lat_sum/num_queries_;
   ROS_INFO("avg latency: %3.3f", avg_lat);

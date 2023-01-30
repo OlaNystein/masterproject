@@ -105,7 +105,7 @@ PlanningParams:
   edge_length_min:  0.2
   edge_length_max:  6
   edge_overshoot:   0.0
-  num_vertices_max: 500 # per planning iteration
+  num_vertices_max: 250 # per planning iteration
   num_edges_max:    300000
   num_loops_cutoff: 2000
   num_loops_max:    100000
@@ -132,7 +132,7 @@ PlanningParams:
   proximity_to_waypoint: 2.0 #how close to waypoint when starting planning of next segment
   initial_planning_time: 2.0
   freespace_cloud_enable: true
-  max_num_outgoing: 16
+  max_num_outgoing: 80
 
 
 GeofenceParams:

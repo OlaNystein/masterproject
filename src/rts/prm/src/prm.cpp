@@ -164,7 +164,7 @@ bool Prm::loadParams(){
 }
 
 void Prm::initializeParams(){
-  random_sampler_.setParams(local_space_params_, local_space_params_);
+  random_sampler_.setParams(global_space_params_, local_space_params_);
 
   // Precompute robot box size for planning
   robot_params_.getPlanningSize(robot_box_size_);
@@ -419,6 +419,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
       double seg_length = (p1 - p0).norm();
       traverse_length += seg_length;
       if ((traverse_length > planning_params_.traverse_length_max)) {
+        units_[active_id_]->reached_final_target_ = false;
         break;
       }
       p0 = p1;
@@ -608,6 +609,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
 
 
   visualization_[active_id_]->visualizeSampler(random_sampler_);
+  random_sampler_.reset();
   visualization_[active_id_]->visualizeBestPaths(roadmap_graph_, roadmap_graph_rep_, 0, units_[active_id_]->current_waypoint_->id);
   if (roadmap_graph_->getNumVertices() > 1){
     visualization_[active_id_]->visualizeGraph(roadmap_graph_);
@@ -634,7 +636,6 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
     rep.status = ExpandGraphStatus::kErrorKdTree;
     return;
   }
-  ROS_INFO("Nearest vertex, x: %f, y: %f, z: %f", nearest_vertex->state[0], nearest_vertex->state[1], nearest_vertex->state[2]);
   // Check for collision of new connection plus some overshoot distance.
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
@@ -687,7 +688,6 @@ void Prm::expandGraph(std::shared_ptr<GraphManager> graph,
       return;
     }
     origin << new_vertex->state[0],new_vertex->state[1],new_vertex->state[2];
-    ROS_INFO("nearest_v size: %d", nearest_vertices.size());
     for (int i = 0; i < nearest_vertices.size(); ++i) {
         //ROS_WARN("noe: %d" ,roadmap_graph_->getNumOutgoingEdges(nearest_vertices[i]->id));
         if (roadmap_graph_->getNumOutgoingEdges(nearest_vertices[i]->id) >= planning_params_.max_num_outgoing){
@@ -765,8 +765,13 @@ void Prm::detectUnitStatus(int unit_id){
     units_[unit_id]->unit_status_ = Prm::StateStatus::CONNECTED;
     return;
   }
+  std::vector<Vertex*> nearest_vertices;
+  roadmap_graph_->getNearestVertices(&cur_state, 5.0, &nearest_vertices);
+  ROS_INFO("nearest vertices size detection %d", nearest_vertices.size());
   if (roadmap_graph_->getNearestVertexInRange(&cur_state, planning_params_.nearest_range_max, &nearest)){
     ROS_INFO("Unit %d is near a vertex", unit_id);
+    ROS_INFO("Nearest222 vertex, x: %f, y: %f, z: %f, numv %d", nearest->state[0], nearest->state[1], nearest->state[2], roadmap_graph_->getNumVertices());
+
     Vertex* link_vertex = NULL;
     bool connected_to_graph = connectStateToGraph(roadmap_graph_, units_[unit_id]->current_state_, link_vertex, 0.7);
     if (connected_to_graph){
@@ -860,8 +865,16 @@ bool Prm::sampleVertex(StateVec& state) {
             global_space_params_.max_val.z() - 0.5 * robot_box_size_.z()) {
     continue;
     }
+    
     //ROS_INFO("x: %f, y: %f, z: %f", state.x(), state.y(), state.z());
-
+    // MapManager::VoxelStatus s = map_manager_->getBoxStatus(Eigen::Vector3d(state[0], state[1], state[2])
+    //    + robot_params_.center_offset, robot_box_size_, true);
+    // if (s == MapManager::VoxelStatus::kUnknown){
+    //   ROS_WARN("State x: %f, y: %f, z: %f is unknown box", state[0], state[1], state[2]);
+    // }
+    // if (s == MapManager::VoxelStatus::kOccupied){
+    //   ROS_WARN("State x: %f, y: %f, z: %f is occupied box", state[0], state[1], state[2]);
+    // }
         // Check if the voxel area is free
     if (map_manager_->getBoxStatus(Eigen::Vector3d(state[0], state[1], state[2])
        + robot_params_.center_offset, robot_box_size_, true) // True for stopping at unknown voxels
@@ -949,6 +962,7 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
                               double dist_ignore_collision_check) {
   Vertex* nearest_vertex = NULL;
   if (!roadmap_graph_->getNearestVertex(&cur_state, &nearest_vertex)) return false;
+
   if (nearest_vertex == NULL) return false;
   Eigen::Vector3d origin(nearest_vertex->state[0], nearest_vertex->state[1],
                          nearest_vertex->state[2]);
@@ -972,7 +986,7 @@ bool Prm::connectStateToGraph(std::shared_ptr<GraphManager> graph,
     roadmap_graph_->addEdge(new_vertex, nearest_vertex, direction_norm);
     // Add edges only from this vertex.
     ExpandGraphReport rep;
-    expandGraphEdges(graph, new_vertex, rep);
+    expandGraphEdges(roadmap_graph_, new_vertex, rep);
     v_added = new_vertex;
   } else {
     ROS_WARN("[GlobalGraph] Try to add current state to the graph.");
