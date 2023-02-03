@@ -106,7 +106,7 @@ PlanningParams:
   edge_length_max:  6
   edge_overshoot:   0.0
   num_vertices_max: 250 # per planning iteration
-  num_edges_max:    300000
+  num_edges_max:    10000
   num_loops_cutoff: 2000
   num_loops_max:    100000
   nearest_range:    3.0

@@ -243,6 +243,8 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
   convertPoseMsgToState(target_pose, target_state);
 
   units_[active_id_]->final_target_ = target_state;
+  minimap_->setTarget(active_id_, &(units_[active_id_]->final_target_));
+  minimap_->setTargetStatus(active_id_, true);
 
   
 
@@ -277,6 +279,7 @@ Prm::GraphStatus Prm::planPath(geometry_msgs::Pose& target_pose, std::vector<geo
     num_target_neighbours++;
     units_[active_id_]->reached_final_target_ = true;
     total_already_exists_++;
+    minimap_->setTargetStatus(active_id_, false);
   }
 
   std::vector<Vertex*> target_neighbours;
