@@ -77,7 +77,6 @@ void Minimap::voxelCallback(const visualization_msgs::MarkerArray& msg){
       int x = fitYToXRange(target_y, maxY, minY);
       if (y < 0) {y = 0;}
       if (x < 0) {x = 0;}
-      ROS_INFO("Targetminimap: x: %f, y: %f", target_x, target_y);
       colorTarget(x, y, i);
     }
   }

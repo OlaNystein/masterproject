@@ -36,7 +36,7 @@ Upi::Upi(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private):
 }
 
 void Upi::planner_cli::clickCallback(const geometry_msgs::PointStamped &p) {
-  ROS_INFO("You clicked, %f, %f", p.point.x, p.point.y);
+  ROS_INFO("\n\n\t\t\t\t\t\tUPI: You clicked, %f, %f for unit %d", p.point.x, p.point.y, id_);
 
   upi_->callPciSimple(id_, p.point.x, p.point.y, p.point.z);
 }
@@ -70,10 +70,10 @@ bool Upi::callPci(int id, geometry_msgs::Pose pose){
   upi_srv.request.target = pose;
   upi_srv.request.unit_id = id;
   if(planner_clients_[id]->planner_client_.call(upi_srv)){
-    ROS_INFO("UPI successfully called PCI for unit %d", id);
+    //ROS_INFO("UPI: successfully called PCI for unit %d", id);
     return true;
   } else {
-    ROS_WARN("UPI unable to communicate with PCI");
+    ROS_WARN("UPI: unable to communicate with PCI %d", id);
     return false;
   }
 }
@@ -91,7 +91,7 @@ bool Upi::callPciSimple(int id, int x_target, int y_target, int z_target){
   upi_srv.request.target = target_pose;
   upi_srv.request.unit_id = id;
   if(planner_clients_[id]->planner_client_.call(upi_srv)){
-    ROS_INFO("UPI successfully called PCI");
+    //ROS_INFO("UPI successfully called PCI");
     return true;
   } else {
     ROS_WARN("UPI unable to communicate with PCI");

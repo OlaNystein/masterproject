@@ -83,7 +83,6 @@ bool Graph::findDijkstraShortestPaths(
   shortest_distances.clear();
   shortest_paths.resize(num_vertices_);
   shortest_distances.resize(num_vertices_);
-  ROS_INFO("d3, numv: %d, nume: %d", num_vertices_, num_edges_);
   auto v_index = boost::get(boost::vertex_index, graph_);
   auto weight = boost::get(boost::edge_weight, graph_);
 

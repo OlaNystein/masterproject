@@ -79,7 +79,7 @@ void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg)
     ROS_INFO("PCI: Unit %d updated current path", active_id_);
     executePath();
     if (msg.final_target_reached) {
-      ROS_WARN("PCI:Reached final target for unit %d, no need for requeuing", active_id_);
+      ROS_WARN("PCI: Reached final target for unit %d, no need for requeuing", active_id_);
     } else {
       ROS_WARN("PCI: Unit %d not yet reached target, requeuing", active_id_);
       rimapp_request_ = true;
@@ -184,7 +184,7 @@ void PlannerControlInterface::run() {
       // Priority 1: Check if initialize
       if (init_request_) {
         init_request_ = false;
-        ROS_INFO("PlannerControlInterface: Running Initialization");
+        ROS_INFO("PCI: Running Initialization");
         runInitialization();
       }  // Priority 2: Search
       else if (rimapp_request_) {
@@ -355,11 +355,10 @@ void PlannerControlInterface::executePath(){
 
     if (stuck_) {
       rimapp_request_ = false;
-      ROS_INFO("RIMAPP aborted, give new target");
+      ROS_INFO("PCI %d: Unit is stuck, give new target", active_id_);
       return;
     }
     if (current_path_.size() > 1){
-      ROS_INFO("Executing prm-path");
       //ROS_WARN("print x of returned best path: %f, length: %d ", current_path_[0].position.x, current_path_.size());
       std::vector<geometry_msgs::Pose> path_to_be_exe;
           pci_manager_->executePath(current_path_, path_to_be_exe,
@@ -370,7 +369,7 @@ void PlannerControlInterface::executePath(){
     }
 
   } else {
-    ROS_WARN("RIMAPP returned empty path");
+    ROS_WARN("PCI %d: returned empty path", active_id_);
     ros::Duration(0.5).sleep();
   }
 }
@@ -383,11 +382,11 @@ void PlannerControlInterface::callRimapp(){
  
 
   if (rimapp_client_.call(rimapp_srv)){
-    ROS_INFO("PCI successfully called RIMAPP planner service");
+    //ROS_INFO("PCI successfully called RIMAPP planner service");
     rimapp_request_ = false;
 
   } else {
-    ROS_WARN("RIMAPP service failed");
+    //ROS_WARN("RIMAPP service failed");
     ros::Duration(0.5).sleep();
   }
 }
