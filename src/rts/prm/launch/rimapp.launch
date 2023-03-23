@@ -1,0 +1,96 @@
+<launch>
+  <arg name="mav_name" default="m100"/>
+  <arg name="robot_name" default="$(arg mav_name)"/>
+  <arg name="world_name" default="basic"/>
+  <arg name="enable_logging" default="true" />
+  <arg name="enable_ground_truth" default="true" />
+  <arg name="log_file" default="$(arg mav_name)" />
+  <arg name="debug" default="false"/>
+  <arg name="rviz_en" default="true" />
+  <arg name="gui" default="true"/>
+  <arg name="paused" default="false"/>
+  <arg name="launch_prefix" default=""/> <!-- gdb -ex run //args   gnome-terminal -x gdb-->
+  <!-- The following line causes gzmsg and gzerr messages to be printed to the console
+      (even when Gazebo is started through roslaunch) -->
+  <arg name="verbose" default="false"/>
+
+  <!-- Config files -->
+  <arg name="rimapp_config_file" default="$(find prm)/config/$(arg robot_name)/rimapp_config.yaml"/>
+  <arg name="pci_file" default="$(find prm)/config/$(arg robot_name)/planner_control_interface_sim_config.yaml"/>
+  <arg name="voxblox_config_file" default="$(find prm)/config/$(arg robot_name)/voxblox_sim_config.yaml"/>
+  <arg name="map_config_file" default="$(arg voxblox_config_file)"/>
+  <arg name="world_file" default="$(find planner_rts_sim)/worlds/pittsburgh_mine.world"/>
+  <!-- <arg name="world_file" default="$(find rotors_gazebo)/worlds/$(arg world_name).world"/>  -->
+
+   <!-- Static TF -->
+  <node pkg="tf" type="static_transform_publisher" name="tf_53" args="0 0 0 0 0 0 world navigation 100" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_51" args="0.15 0 0.0 0.0 0.261 0.0 $(arg robot_name)/base_link $(arg robot_name)/vi_sensor/base_link 10" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_1" args="0 0 0 0 0 0 $(arg robot_name)/vi_sensor/base_link fcu 1" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_2" args="0.015 0.055 0.0065 -1.57 0.1 -1.57 fcu $(arg robot_name)/vi_sensor/camera_depth_optical_center_link 1" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_3" args="0.015 0.055 0.0065 -1.57 0.1 -1.57 fcu $(arg robot_name)/vi_sensor/camera_left_link 1" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_4" args="0.015 -0.055 0.0065 -1.57 0.1 -1.57 fcu $(arg robot_name)/vi_sensor/camera_right_link 1" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_5" args="0 0 0.05 0.0 0.0 0.0 $(arg robot_name)/base_link $(arg robot_name)/$(arg robot_name)/velodyne 10" />
+
+
+  <!-- ROS Gazebo  -->
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find planner_rts_sim)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find planner_rts_sim)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch"> 
+    <arg name="world_name" value= "$(arg world_file)"/> <!--"$(find rotors_gazebo)/worlds/$(arg world_name).world"  -->
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <group ns="$(arg mav_name)">
+
+    <node name="img_throttler" type="throttle" pkg="topic_tools" args="messages vi_sensor/camera_depth/depth/points 5 vi_sensor/camera_depth/depth/points_throttled" />
+    <node name="odo_throttler" type="throttle" pkg="topic_tools" args="messages ground_truth/odometry 100 ground_truth/odometry_throttled" />
+
+    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />
+      <arg name="enable_logging" value="$(arg enable_logging)" />
+      <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <arg name="log_file" value="$(arg log_file)"/>
+      <arg name="x" value="0.0"/>
+      <arg name="y" value="0.0"/>
+      <arg name="z" value="0.5"/>
+    </include>
+
+
+    <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_$(arg mav_name).yaml" />
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
+      <remap from="odometry" to="odometry_sensor1/odometry" />
+    </node>
+  </group>
+
+
+  <arg name="odometry_topic" default="/$(arg robot_name)/ground_truth/odometry_throttled"/>
+  <node name="pose_throttler" type="throttle" pkg="topic_tools" args="messages $(arg robot_name)/ground_truth/pose_with_covariance 10 /msf_core/pose" />
+
+
+  <node pkg="prm" type="rimapp_node" name="rimapp_node" output="screen" launch-prefix="$(arg launch_prefix)">
+    <remap from="odometry" to="$(arg odometry_topic)" />
+    <remap from="/pointcloud" to="/$(arg robot_name)/velodyne_points" />
+    <rosparam command="load" file="$(arg rimapp_config_file)" />
+    <rosparam command="load" file="$(arg map_config_file)" />
+  </node>
+
+
+
+  <node pkg="pci_mav" type="pci_mav_ros_node" name="pci_mav_ros_node" output="screen">
+    <remap from="command/trajectory" to="$(arg robot_name)/command/trajectory" />
+    <remap from="planner_server" to="prm" />
+    <remap from="planner_homing_server" to="prm/homing" />
+    <remap from="odometry" to="$(arg odometry_topic)"/>
+    <rosparam command="load" file="$(arg pci_file)" />
+  </node>
+
+
+
+  
+  <node pkg="rviz" type="rviz" name="rimapp_ui" output="screen" args="-d $(find prm)/config/rviz/m100_sim.rviz"/>
+</launch>

@@ -761,6 +761,19 @@ bool PlanningParams::loadParams(std::string ns) {
     ROSPARAM_INFO(str_tmp);
   }
 
+  param_name = ns + "/unit_odom_list";
+  ros::param::get(param_name, parse_str_list);
+  if (parse_str_list.size() <= 0) {
+    ROSPARAM_WARN(param_name, "");
+  } else {
+    unit_odom_list = parse_str_list;
+    std::string str_tmp = "Unit odometry topics: ";
+    for (int i = 0; i < unit_odom_list.size(); ++i) {
+      str_tmp += unit_odom_list[i] + ", ";
+    }
+    ROSPARAM_INFO(str_tmp);
+  }
+
   param_name = ns + "/v_max";
   if (!ros::param::get(param_name, v_max)) {
     v_max = 0.2;
@@ -1074,6 +1087,13 @@ bool PlanningParams::loadParams(std::string ns) {
     ROSPARAM_WARN(param_name, robot_name);
   }
 
+  param_name = ns + "/max_num_outgoing";
+  if (!ros::param::get(param_name, max_num_outgoing)) {
+    max_num_outgoing = 20;
+    ROSPARAM_WARN(param_name, max_num_outgoing);
+  }
+
+
   // RRT* params
   param_name = ns + "/proximity_to_waypoint";
   if (!ros::param::get(param_name, proximity_to_waypoint)) {
@@ -1181,7 +1201,7 @@ bool RobotDynamicsParams::loadParams(std::string ns) {
 
   param_name = ns + "/v_max";
   if (!ros::param::get(param_name, v_max)) {
-    v_max = 0.2;
+    v_max = 1.0;
     ROSPARAM_WARN(param_name, v_max);
   }
 

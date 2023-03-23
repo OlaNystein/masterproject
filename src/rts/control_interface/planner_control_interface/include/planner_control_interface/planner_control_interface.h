@@ -35,6 +35,9 @@
 
 #include "rrtstar_msgs/search.h"
 #include "rrtstar_msgs/pci_search.h"
+#include "rimapp_msgs/plan_path_single.h"
+#include "rimapp_msgs/pci_plan_path_single.h"
+#include "rimapp_msgs/Bestpath.h"
 
 namespace search {
 
@@ -68,15 +71,18 @@ class PlannerControlInterface {
   ros::Subscriber odometry_sub_;
   ros::Subscriber pose_sub_;
   ros::Subscriber pose_stamped_sub_;
+
+  ros::Subscriber best_path_sub_;
   
-  
+  ros::ServiceClient rimapp_client_;
   ros::ServiceClient search_client_;
   ros::ServiceClient planner_client_;
   ros::ServiceClient planner_global_client_;
   ros::ServiceClient planner_geofence_client_;
   ros::ServiceClient planner_set_exp_mode_client_;
   
-
+  ros::ServiceServer pci_surveillance_server_;
+  ros::ServiceServer pci_rimapp_server_;
   ros::ServiceServer pci_search_server_;
   ros::ServiceServer pci_server_;
   ros::ServiceServer pci_std_automatic_planning_server_;
@@ -121,9 +127,10 @@ class PlannerControlInterface {
   void poseStampedCallback(const geometry_msgs::PoseStamped &pose);
   void processPose(const geometry_msgs::Pose &pose);
 
-  bool searchCallback(rrtstar_msgs::pci_search::Request &req,
-                      rrtstar_msgs::pci_search::Response &res);
+  bool rimappCallback(rimapp_msgs::pci_plan_path_single::Request &req,
+                      rimapp_msgs::pci_plan_path_single::Response &res);
 
+  
   bool triggerCallback(planner_msgs::pci_trigger::Request &req,
                        planner_msgs::pci_trigger::Response &res);
 
@@ -158,12 +165,19 @@ class PlannerControlInterface {
   int search_iteration_;
 
 
-  geometry_msgs::Pose current_target_;
-  bool target_reached_;
-
   ros::Time ttime;
   double total_time_;
-  void runSearch();
+
+  void bestPathCallback(const rimapp_msgs::Bestpath &msg);
+  //rimapp parameters
+  bool rimapp_request_;
+  bool stop_request_;
+  bool execute_path_;
+  bool stuck_;
+  geometry_msgs::Pose current_target_;
+  int active_id_;
+  void callRimapp();
+  void executePath();
 
 };
 }  // namespace explorer

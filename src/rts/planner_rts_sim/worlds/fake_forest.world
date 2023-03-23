@@ -1,0 +1,2120 @@
+<sdf version='1.7'>
+  <world name='default'>
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 -0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+      <spot>
+        <inner_angle>0</inner_angle>
+        <outer_angle>0</outer_angle>
+        <falloff>0</falloff>
+      </spot>
+    </light>
+    <model name='ground_plane'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <contact>
+              <collide_bitmask>65535</collide_bitmask>
+              <ode/>
+            </contact>
+            <friction>
+              <ode>
+                <mu>100</mu>
+                <mu2>50</mu2>
+              </ode>
+              <torsional>
+                <ode/>
+              </torsional>
+            </friction>
+            <bounce/>
+          </surface>
+          <max_contacts>10</max_contacts>
+        </collision>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Grey</name>
+            </script>
+          </material>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+    </model>
+    <plugin name="ros_interface_plugin" filename="librotors_gazebo_ros_interface_plugin.so"/>
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type='adiabatic'/>
+    <physics type='ode'>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>1000</iters>
+          <sor>1.3</sor>
+        </solver>
+        <constraints>
+          <cfm>0</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>100</contact_max_correcting_vel>
+          <contact_surface_layer>0.001</contact_surface_layer>
+        </constraints>
+      </ode>
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>100</real_time_update_rate>
+      <gravity>0 0 -9.8</gravity>
+    </physics>
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>1</shadows>
+    </scene>
+    <wind/>
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>47.3667</latitude_deg>
+      <longitude_deg>8.5500</longitude_deg>
+      <elevation>500.0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+    <model name='tree_0'>
+      <static>1</static>
+      <link name='branch_0'>
+        <inertial>
+          <pose>0.53488 -0.768797 3.29789 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>35.5561</ixx>
+            <ixy>0.405989</ixy>
+            <ixz>-2.2084</ixz>
+            <iyy>33.7719</iyy>
+            <iyz>7.59887</iyz>
+            <izz>11.1543</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>33.3852 -20.505 0 0 -0 0</pose>
+    </model>
+    <model name='tree_1'>
+      <static>1</static>
+      <link name='branch_0'>
+        <inertial>
+          <pose>0.53488 -0.768797 3.29789 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>35.5561</ixx>
+            <ixy>0.405989</ixy>
+            <ixz>-2.2084</ixz>
+            <iyy>33.7719</iyy>
+            <iyz>7.59887</iyz>
+            <izz>11.1543</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>-11.0454 -28.1461 0 0 -0 0</pose>
+    </model>
+    <model name='tree_2'>
+      <static>1</static>
+      <link name='branch_0'>
+        <pose relative_to='world_joint'>0 0 0 0 -0 0</pose>
+        <inertial>
+          <pose>-0.062419 1.35063 1.92378 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>18.4554</ixx>
+            <ixy>-0.538458</ixy>
+            <ixz>0.0444252</ixz>
+            <iyy>14.9008</iyy>
+            <iyz>-4.27774</iyz>
+            <izz>12.389</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>28.9437 -38.2666 0 0 -0 0</pose>
+    </model>
+    <model name='tree_3'>
+      <static>1</static>
+      <link name='branch_0'>
+        <inertial>
+          <pose>0.53488 -0.768797 3.29789 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>35.5561</ixx>
+            <ixy>0.405989</ixy>
+            <ixz>-2.2084</ixz>
+            <iyy>33.7719</iyy>
+            <iyz>7.59887</iyz>
+            <izz>11.1543</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>-14.5644 -23.3243 0 0 -0 0</pose>
+    </model>
+    <model name='tree_4'>
+      <static>1</static>
+      <link name='branch_0'>
+        <pose relative_to='world_joint'>0 0 0 0 -0 0</pose>
+        <inertial>
+          <pose>-0.062419 1.35063 1.92378 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>18.4554</ixx>
+            <ixy>-0.538458</ixy>
+            <ixz>0.0444252</ixz>
+            <iyy>14.9008</iyy>
+            <iyz>-4.27774</iyz>
+            <izz>12.389</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>1.41239 41.4998 0 0 -0 0</pose>
+    </model>
+    <model name='tree_5'>
+      <static>1</static>
+      <link name='branch_0'>
+        <pose relative_to='world_joint'>0 0 0 0 -0 0</pose>
+        <inertial>
+          <pose>-0.062419 1.35063 1.92378 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>18.4554</ixx>
+            <ixy>-0.538458</ixy>
+            <ixz>0.0444252</ixz>
+            <iyy>14.9008</iyy>
+            <iyz>-4.27774</iyz>
+            <izz>12.389</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>27.875 -37.5013 0 0 -0 0</pose>
+    </model>
+    <model name='tree_6'>
+      <static>1</static>
+      <link name='branch_0'>
+        <pose relative_to='world_joint'>0 0 0 0 -0 0</pose>
+        <inertial>
+          <pose>-0.062419 1.35063 1.92378 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>18.4554</ixx>
+            <ixy>-0.538458</ixy>
+            <ixz>0.0444252</ixz>
+            <iyy>14.9008</iyy>
+            <iyz>-4.27774</iyz>
+            <izz>12.389</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.211415</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.045232 1.07093 1.59177 0 0.799295 1.52859</pose>
+          <geometry>
+            <cylinder>
+              <length>2.99048</length>
+              <radius>0.148525</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>-0.141796 1.04542 2.21119 0 0.745712 1.70561</pose>
+          <geometry>
+            <cylinder>
+              <length>3.1098</length>
+              <radius>0.185647</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>0.00481 2.71262 2.46471 0.883265 1.37697 2.54949</pose>
+          <geometry>
+            <cylinder>
+              <length>1.72591</length>
+              <radius>0.115805</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.21123 1.46824 1.39678 -0.761453 1.21695 0.557182</pose>
+          <geometry>
+            <cylinder>
+              <length>1.73976</length>
+              <radius>0.112078</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.322979 2.08032 3.45308 -0.773341 0.325318 -0.465314</pose>
+          <geometry>
+            <cylinder>
+              <length>2.0563</length>
+              <radius>0.143425</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>-0.87939 1.07685 2.34892 0.918786 0.547952 -2.41217</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05532</length>
+              <radius>0.15461</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>-23.1531 -25.2304 0 0 -0 0</pose>
+    </model>
+    <model name='tree_7'>
+      <static>1</static>
+      <link name='branch_0'>
+        <inertial>
+          <pose>0.53488 -0.768797 3.29789 0 -0 0</pose>
+          <mass>7</mass>
+          <inertia>
+            <ixx>35.5561</ixx>
+            <ixy>0.405989</ixy>
+            <ixz>-2.2084</ixz>
+            <iyy>33.7719</iyy>
+            <iyz>7.59887</iyz>
+            <izz>11.1543</izz>
+          </inertia>
+        </inertial>
+        <collision name='branch_0_collision_collision'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_1_collision_collision_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_4_collision_collision_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_2_collision_collision_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_3_collision_collision_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_5_collision_collision_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <collision name='branch_0_fixed_joint_lump__branch_6_collision_collision_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='branch_0_visual_visual'>
+          <pose>0 0 2.5 0 -0 0</pose>
+          <geometry>
+            <cylinder>
+              <length>5</length>
+              <radius>0.221587</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_1_visual_visual_1'>
+          <pose>0.433928 -0.283063 1.93189 0 0.420312 -0.57801</pose>
+          <geometry>
+            <cylinder>
+              <length>2.53938</length>
+              <radius>0.174187</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_4_visual_visual_2'>
+          <pose>0.350432 -0.859283 4.20616 -0 0.591444 -1.18357</pose>
+          <geometry>
+            <cylinder>
+              <length>3.32876</length>
+              <radius>0.189211</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_2_visual_visual_3'>
+          <pose>1.3333 -0.295122 3.44989 0.556109 0.701415 1.20669</pose>
+          <geometry>
+            <cylinder>
+              <length>1.48628</length>
+              <radius>0.12901</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_3_visual_visual_4'>
+          <pose>0.401568 -0.555754 2.25513 -0.438492 0.291853 -2.37446</pose>
+          <geometry>
+            <cylinder>
+              <length>1.41057</length>
+              <radius>0.152012</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_5_visual_visual_5'>
+          <pose>0.306302 -1.41879 5.86085 -0.251365 0.038912 2.34003</pose>
+          <geometry>
+            <cylinder>
+              <length>2.05964</length>
+              <radius>0.168558</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <visual name='branch_0_fixed_joint_lump__branch_6_visual_visual_6'>
+          <pose>0.918629 -1.96956 5.38131 0.285509 0.999494 -0.710009</pose>
+          <geometry>
+            <cylinder>
+              <length>1.81963</length>
+              <radius>0.156323</radius>
+            </cylinder>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>12.4117 47.1039 0 0 -0 0</pose>
+    </model>
+    <state world_name='default'>
+      <sim_time>104 472000000</sim_time>
+      <real_time>105 227464972</real_time>
+      <wall_time>1671125697 239547779</wall_time>
+      <iterations>104472</iterations>
+      <model name='ground_plane'>
+        <pose>0 0 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='link'>
+          <pose>0 0 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_0'>
+        <pose>33.3852 -20.505 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>33.3852 -20.505 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_1'>
+        <pose>-11.0454 -28.1461 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>-11.0454 -28.1461 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_2'>
+        <pose>28.9437 -38.2666 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>28.9437 -38.2666 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_3'>
+        <pose>-14.5644 -23.3243 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>-14.5644 -23.3243 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_4'>
+        <pose>1.41239 41.4998 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>1.41239 41.4998 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_5'>
+        <pose>27.875 -37.5013 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>27.875 -37.5013 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_6'>
+        <pose>-23.1531 -25.2304 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>-23.1531 -25.2304 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='tree_7'>
+        <pose>12.4117 47.1039 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='branch_0'>
+          <pose>12.4117 47.1039 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <light name='sun'>
+        <pose>0 0 10 0 -0 0</pose>
+      </light>
+    </state>
+    <gui fullscreen='0'>
+      <camera name='user_camera'>
+        <pose>-6.14502 -12.2036 6.02747 0 0.227643 0.604195</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+  </world>
+</sdf>

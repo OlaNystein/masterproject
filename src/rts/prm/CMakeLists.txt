@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(rrtstar)
+project(prm)
 
 add_definitions(-std=c++14)
 
@@ -18,22 +18,21 @@ include_directories(
 
 cs_add_library(
   ${PROJECT_NAME}
-  src/rrtstar.cpp
-  src/rrtstar_rviz.cpp
-  src/rts.cpp
+   src/prm.cpp
+   src/prm_rviz.cpp
+   src/rimapp.cpp
+   src/upi.cpp
+   src/minimap.cpp
 )
 
 
 
 
 
-cs_add_executable(rts_node src/rts_node.cpp)
-target_link_libraries(rts_node ${PROJECT_NAME})
+cs_add_executable(rimapp_node src/rimapp_node.cpp)
+target_link_libraries(rimapp_node ${PROJECT_NAME})
 
 cs_install()
 cs_export(LIBRARIES)
-
-
-
 
 

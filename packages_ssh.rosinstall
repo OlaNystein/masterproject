@@ -46,17 +46,10 @@
     uri: git@github.com:unr-arl/volumetric_mapping.git
     version: gbp_dev
 
-#EXPLORATION
+# Corridors
 - git:
-    local-name: src/exploration/gbplanner_ros/
-    uri: git@github.com:unr-arl/gbplanner_ros.git
-    version: dev/noetic
-- git:
-    local-name: src/exploration/pci_mav/
-    uri: git@github.com:unr-arl/pci_mav.git
-    version: master
-
-# UI
+    local-name: src/rts/custom_worlds/
+    uri: git@github.com:leonhartyao/gazebo_models_worlds_collection.git
 
 # sim
 - git:

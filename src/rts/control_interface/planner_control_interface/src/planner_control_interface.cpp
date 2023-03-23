@@ -13,6 +13,8 @@ PlannerControlInterface::PlannerControlInterface(
   planner_status_pub_ =
       nh_.advertise<planner_msgs::PlannerStatus>("gbplanner_status", 5);
 
+  // Path results
+  best_path_sub_ = nh_.subscribe("best_path_res", 1, &PlannerControlInterface::bestPathCallback, this);
   // Pose information.
   odometry_sub_ = nh_.subscribe(
       "odometry", 1, &PlannerControlInterface::odometryCallback, this);
@@ -30,17 +32,20 @@ PlannerControlInterface::PlannerControlInterface(
       &PlannerControlInterface::initializationCallback, this);
   //
 
-  pci_search_server_ = nh_.advertiseService("pci_search", &PlannerControlInterface::searchCallback, this);
 
-  search_client_ = nh_.serviceClient<rrtstar_msgs::search>("rts/search");
+  pci_rimapp_server_ = nh_.advertiseService("pci_plan_path_single",
+                                            &PlannerControlInterface::rimappCallback, this);
+  
+  rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("rimapp/plan");
+
+  // pci_surveillance_server_ = nh_serviceClient<rimapp_msgs::
 
 
-  while (!(search_client_ = nh.serviceClient<rrtstar_msgs::search>(
-               "rts/search", true))) {  // true for persistent
-    ROS_WARN("PCI: service search_server is not available: waiting...");
+  while (!(rimapp_client_.waitForExistence())) {  // true for persistent
+    ROS_WARN("PCI: service rimapp_server is not available: waiting...");
     sleep(1);
   }
-  ROS_INFO("PCI: connected to service search_server.");
+  ROS_INFO("PCI: connected to service rimapp_server.");
   
   total_time_ = 0;
   
@@ -63,18 +68,24 @@ PlannerControlInterface::PlannerControlInterface(
   run();
 }
 
-bool PlannerControlInterface::searchCallback(rrtstar_msgs::pci_search::Request &req,
-                      rrtstar_msgs::pci_search::Response &res) {
-  search_request_ = true;
-  target_reached_ = false;
-  
-  ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
-
-  current_target_ = req.target;
-  res.success = true;
-  return true;
+void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg){
+  //ROS_INFO("PCI: MSG recieved %d", active_id_);
+  if (msg.unit_id == active_id_){
+    if (msg.best_path.size() < 1){
+      ROS_WARN("PCI: Unit %d got empty path, requeue a different target.", active_id_);
+      return;
+    }
+    current_path_ = msg.best_path;
+    ROS_INFO("PCI: Unit %d updated current path", active_id_);
+    executePath();
+    if (msg.final_target_reached) {
+      ROS_WARN("PCI: Reached final target for unit %d, no need for requeuing", active_id_);
+    } else {
+      ROS_WARN("PCI: Unit %d not yet reached target, requeuing", active_id_);
+      rimapp_request_ = true;
+    }
+  }
 }
-
 
 bool PlannerControlInterface::goToWaypointCallback(
     planner_msgs::pci_to_waypoint::Request &req,
@@ -144,8 +155,11 @@ bool PlannerControlInterface::init() {
   init_request_ = false;
   global_request_ = false;
 
-  search_request_ = false;
-  target_reached_ = false;
+  rimapp_request_ = false;
+  execute_path_ = false;
+
+  // Uninitialized id is -1, gets set by the first order
+  active_id_ = -1;
 
   go_to_waypoint_request_ = false;
   // Wait for the system is ready.
@@ -170,15 +184,12 @@ void PlannerControlInterface::run() {
       // Priority 1: Check if initialize
       if (init_request_) {
         init_request_ = false;
-        ROS_INFO("PlannerControlInterface: Running Initialization");
+        ROS_INFO("PCI: Running Initialization");
         runInitialization();
       }  // Priority 2: Search
-      else if (search_request_) {
-        runSearch();
-        if (target_reached_){
-          search_request_ = false;
-        }
-      }
+      else if (rimapp_request_) {
+        callRimapp();
+      } 
     } else if (pci_status == PCIManager::PCIStatus::kError) {
       // Reset everything to manual then wait for operator.
       resetPlanner();
@@ -322,69 +333,63 @@ void PlannerControlInterface::processPose(const geometry_msgs::Pose &pose) {
   pose_is_ready_ = true;
 }
 
-void PlannerControlInterface::runSearch() {
-  //ROS_INFO("Planning iteration %d", search_iteration_);
-  rrtstar_msgs::search search_srv;
-  search_srv.request.target_pose = current_target_;
-  
-  START_TIMER(ttime);
-  
 
-    if (search_client_.call(search_srv)) {
-      if (!search_srv.response.best_path.empty()) {
-        // Execute path
-        if (search_srv.response.stuck) {
-          search_iteration_ = 0;
-          search_request_ = false;
-          target_reached_ = false;
-          ROS_INFO("Planner aborted - give new target");
-          return;
-        }
-        ROS_INFO("Executing path. ");
-        std::vector<geometry_msgs::Pose> path_to_be_exe;
-        pci_manager_->executePath(search_srv.response.best_path, path_to_be_exe,
-                                  PCIManager::ExecutionPathType::kGlobalPath);
-        
-        int wp_pos_id = path_to_be_exe.size()-1;
-        ROS_WARN("Printing first pose in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
-        ROS_WARN("Printing last pose in path in runsearchpci x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
-        current_path_ = path_to_be_exe;
 
-        // bool reached_waypoint = false;
-        
-        // // Wait till commited path is somewhat executed before continuing.
-        // while (!reached_waypoint){
-        //   Eigen::Vector3d current_pos = Eigen::Vector3d(current_pose_.position.x, current_pose_.position.y, current_pose_.position.z);
-        //   Eigen::Vector3d wp_pos = Eigen::Vector3d(path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
-        //   double current_pos_norm = current_pos.norm();
-        //   double wp_pos_norm = wp_pos.norm();
-        //   ROS_INFO("Current distance to wp is %f ", abs(current_pos_norm - wp_pos_norm));
-        //   if (abs(current_pos_norm - wp_pos_norm) < 2) { //magic number
-        //     reached_waypoint = true;
-        //   }
-        //   ros::Duration(0.5).sleep();
-        // }
-        
-      } else {
-        ROS_WARN("Will not execute path");
-        
-        ros::Duration(0.5).sleep();
-      }
-      search_iteration_++;
-    } else {
-      ROS_WARN("Planner service failed");
-      ros::Duration(0.5).sleep();
-    }
-  
-  if (search_srv.response.final_target_reached) {
-    target_reached_ = true;
-    total_time_ = GET_ELAPSED_TIME(ttime);
-    ROS_WARN("REACHED FINAL TARGET, total time: %f", total_time_);
-  }
+bool PlannerControlInterface::rimappCallback(
+                      rimapp_msgs::pci_plan_path_single::Request &req,
+                      rimapp_msgs::pci_plan_path_single::Response &res){
+          
+  rimapp_request_ = true;
 
+  //ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
+
+  active_id_ = req.unit_id;
+  current_target_ = req.target;
+  res.success = true;
+  return true;
 }
 
+void PlannerControlInterface::executePath(){
+  if (!current_path_.empty()) {
+    // Execute path
 
+    if (stuck_) {
+      rimapp_request_ = false;
+      ROS_INFO("PCI %d: Unit is stuck, give new target", active_id_);
+      return;
+    }
+    if (current_path_.size() > 1){
+      //ROS_WARN("print x of returned best path: %f, length: %d ", current_path_[0].position.x, current_path_.size());
+      std::vector<geometry_msgs::Pose> path_to_be_exe;
+          pci_manager_->executePath(current_path_, path_to_be_exe,
+                                    PCIManager::ExecutionPathType::kGlobalPath);
+      int wp_pos_id = path_to_be_exe.size()-1;
+      //ROS_WARN("Printing first pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
+      //ROS_WARN("Printing last pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
+    }
+
+  } else {
+    ROS_WARN("PCI %d: returned empty path", active_id_);
+    ros::Duration(0.5).sleep();
+  }
+}
+
+void PlannerControlInterface::callRimapp(){
+
+  rimapp_msgs::plan_path_single rimapp_srv;
+  rimapp_srv.request.target_pose = current_target_;
+  rimapp_srv.request.unit_id = active_id_;
+ 
+
+  if (rimapp_client_.call(rimapp_srv)){
+    //ROS_INFO("PCI successfully called RIMAPP planner service");
+    rimapp_request_ = false;
+
+  } else {
+    //ROS_WARN("RIMAPP service failed");
+    ros::Duration(0.5).sleep();
+  }
+}
 
 
 }  // namespace explorer
