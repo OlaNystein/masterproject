@@ -9,6 +9,8 @@
 #include <ros/ros.h>
 #include <nav_msgs/Path.h>
 
+#include <tf/transform_listener.h>
+
 #include <geometry_msgs/Polygon.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Pose.h>
@@ -18,6 +20,7 @@
 #include "kdtree/kdtree.h"
 
 #include "prm/prm_rviz.h"
+#include <prm/minimap.h>
 
 #include "planner_common/graph_base.h"
 #include "planner_common/graph.h"
@@ -31,7 +34,7 @@
 namespace search{
 namespace prm{
 
-
+std::vector<double> withoutHiLo(std::vector<double> orig); 
 
 class Prm {
   public:
@@ -67,6 +70,12 @@ class Prm {
     Prm::StateStatus target_status_;
     double pcl_clear_radius_;
 
+    std::vector<int> current_path_id_list_;
+    bool currently_moving_;
+    ros::Time moving_time_start_;
+
+    int publish_throttle_it_;
+
     const std::vector<Prm::unit*>* units_for_pcl_;
     void setUnitPtr(const std::vector<Prm::unit*>& units_for_pcl);
 
@@ -80,7 +89,7 @@ class Prm {
       current_state_ = state;
     }
 
-    
+    tf::TransformListener tf_listener_;
 
     ros::Subscriber odometry_sub_;
     ros::Subscriber pointcloud_sub_;
@@ -90,6 +99,7 @@ class Prm {
     void pclCallback(const sensor_msgs::PointCloud2& pcl);
     void setOdomSubscriber(std::string odom_prefix);
     void setPclSubscriber(std::string pcl_prefix);
+  
 
     void setID(int id){
       id_ = id;
@@ -130,6 +140,24 @@ class Prm {
   bool connectStateToGraph(std::shared_ptr<GraphManager> graph,
                               StateVec& cur_state, Vertex*& v_added,
                               double dist_ignore_collision_check);
+
+  int getNumRobots(){
+    return num_robots_;
+  }
+
+  void setUnitMovingState(int id, bool moving){
+    if (id < getNumRobots()){
+      units_[id]->currently_moving_ = moving;
+      if (!moving){
+        units_[id]->current_path_id_list_.clear();
+      } else {
+        units_[id]->moving_time_start_ = ros::Time::now();
+      }
+    }
+    return;
+  }
+
+
   private:
   
   
@@ -141,7 +169,9 @@ class Prm {
 
   ShortestPathsReport roadmap_graph_rep_;
 
-  Visualization* visualization_;
+  std::vector<Visualization*> visualization_;
+
+  Minimap* minimap_;
 
   // Parameters required for planning
   SensorParams sensor_params_; 
@@ -173,6 +203,7 @@ class Prm {
   // Query queue
 
   std::vector<Prm::unit*> units_;
+  std::vector<std::pair<int, StateVec*>> cur_states_;
   // make a msg struct with query info
     // id, start, end
   
@@ -180,6 +211,8 @@ class Prm {
   Eigen::Vector3d robot_box_size_;
   int planning_num_vertices_max_;
   int planning_num_edges_max_;
+
+  ros::Time ttime;
 
   //---------------------FUNCTIONS----------------------
   void detectUnitStatus(int unit_id);
@@ -194,9 +227,17 @@ class Prm {
 
   bool checkCollisionBetweenVertices(Vertex* v_start, Vertex* v_end);
 
+  bool doCuboidsIntersect(const Eigen::AlignedBox3d &cuboid1, const Eigen::AlignedBox3d &cuboid2);
+
   void printUnit(int unit_id);
 
-
+  // bool addRefPathToGraph(const std::shared_ptr<GraphManager> graph_manager,
+  //                           const std::vector<geometry_msgs::Pose>& path);
+  // bool modifyPath(pcl::PointCloud<pcl::PointXYZ>* obstacle_pcl,
+  //                    Eigen::Vector3d& p0, Eigen::Vector3d& p1,
+  //                    Eigen::Vector3d& p1_mod);
+  // bool improveFreePath(const std::vector<geometry_msgs::Pose>& path_orig,
+  //                         std::vector<geometry_msgs::Pose>& path_mod);
   //list of robots with id, lets start with 1 robot
   //one common roadmap
   //need to create a wrapper for a robot with the sampler and pathfinder
@@ -228,6 +269,22 @@ class Prm {
     else if (x < -M_PI)
       x += 2 * M_PI;
   }
+
+  // Results variables
+  double total_build_time_;//
+  int total_already_exists_;//
+  double total_path_extraction_;//
+  double total_path_optimality_;
+
+  // Vectors for standard deviation
+  std::vector<double> build_times_;
+  std::vector<double> path_optimalities_;
+
+  int num_queries_;//
+
+
+  void printStats(int n_q);
+
 
 };
 

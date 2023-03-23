@@ -269,6 +269,7 @@ struct PlanningParams {
   bool auto_global_planner_enable;
   int num_low_gain_steps;
   std::string robot_name;
+  int max_num_outgoing;
 
   double proximity_to_waypoint;
   double initial_planning_time;

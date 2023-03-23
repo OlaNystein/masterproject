@@ -13,6 +13,8 @@ PlannerControlInterface::PlannerControlInterface(
   planner_status_pub_ =
       nh_.advertise<planner_msgs::PlannerStatus>("gbplanner_status", 5);
 
+  // Path results
+  best_path_sub_ = nh_.subscribe("best_path_res", 1, &PlannerControlInterface::bestPathCallback, this);
   // Pose information.
   odometry_sub_ = nh_.subscribe(
       "odometry", 1, &PlannerControlInterface::odometryCallback, this);
@@ -34,7 +36,7 @@ PlannerControlInterface::PlannerControlInterface(
   pci_rimapp_server_ = nh_.advertiseService("pci_plan_path_single",
                                             &PlannerControlInterface::rimappCallback, this);
   
-  rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("prm/plan");
+  rimapp_client_ = nh_.serviceClient<rimapp_msgs::plan_path_single>("rimapp/plan");
 
   // pci_surveillance_server_ = nh_serviceClient<rimapp_msgs::
 
@@ -66,6 +68,24 @@ PlannerControlInterface::PlannerControlInterface(
   run();
 }
 
+void PlannerControlInterface::bestPathCallback(const rimapp_msgs::Bestpath &msg){
+  //ROS_INFO("PCI: MSG recieved %d", active_id_);
+  if (msg.unit_id == active_id_){
+    if (msg.best_path.size() < 1){
+      ROS_WARN("PCI: Unit %d got empty path, requeue a different target.", active_id_);
+      return;
+    }
+    current_path_ = msg.best_path;
+    ROS_INFO("PCI: Unit %d updated current path", active_id_);
+    executePath();
+    if (msg.final_target_reached) {
+      ROS_WARN("PCI: Reached final target for unit %d, no need for requeuing", active_id_);
+    } else {
+      ROS_WARN("PCI: Unit %d not yet reached target, requeuing", active_id_);
+      rimapp_request_ = true;
+    }
+  }
+}
 
 bool PlannerControlInterface::goToWaypointCallback(
     planner_msgs::pci_to_waypoint::Request &req,
@@ -135,8 +155,11 @@ bool PlannerControlInterface::init() {
   init_request_ = false;
   global_request_ = false;
 
-  target_reached_ = false;
   rimapp_request_ = false;
+  execute_path_ = false;
+
+  // Uninitialized id is -1, gets set by the first order
+  active_id_ = -1;
 
   go_to_waypoint_request_ = false;
   // Wait for the system is ready.
@@ -161,14 +184,11 @@ void PlannerControlInterface::run() {
       // Priority 1: Check if initialize
       if (init_request_) {
         init_request_ = false;
-        ROS_INFO("PlannerControlInterface: Running Initialization");
+        ROS_INFO("PCI: Running Initialization");
         runInitialization();
       }  // Priority 2: Search
       else if (rimapp_request_) {
-        runRimapp();
-        if (target_reached_){
-          rimapp_request_ = false;
-        }
+        callRimapp();
       } 
     } else if (pci_status == PCIManager::PCIStatus::kError) {
       // Reset everything to manual then wait for operator.
@@ -320,9 +340,8 @@ bool PlannerControlInterface::rimappCallback(
                       rimapp_msgs::pci_plan_path_single::Response &res){
           
   rimapp_request_ = true;
-  target_reached_ = false;
 
-  ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
+  //ROS_WARN("Printing target in pci x: %f, y: %f, z: %f. ", req.target.position.x, req.target.position.y, req.target.position.z);
 
   active_id_ = req.unit_id;
   current_target_ = req.target;
@@ -330,49 +349,45 @@ bool PlannerControlInterface::rimappCallback(
   return true;
 }
 
-void PlannerControlInterface::runRimapp(){
+void PlannerControlInterface::executePath(){
+  if (!current_path_.empty()) {
+    // Execute path
+
+    if (stuck_) {
+      rimapp_request_ = false;
+      ROS_INFO("PCI %d: Unit is stuck, give new target", active_id_);
+      return;
+    }
+    if (current_path_.size() > 1){
+      //ROS_WARN("print x of returned best path: %f, length: %d ", current_path_[0].position.x, current_path_.size());
+      std::vector<geometry_msgs::Pose> path_to_be_exe;
+          pci_manager_->executePath(current_path_, path_to_be_exe,
+                                    PCIManager::ExecutionPathType::kGlobalPath);
+      int wp_pos_id = path_to_be_exe.size()-1;
+      //ROS_WARN("Printing first pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
+      //ROS_WARN("Printing last pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
+    }
+
+  } else {
+    ROS_WARN("PCI %d: returned empty path", active_id_);
+    ros::Duration(0.5).sleep();
+  }
+}
+
+void PlannerControlInterface::callRimapp(){
 
   rimapp_msgs::plan_path_single rimapp_srv;
   rimapp_srv.request.target_pose = current_target_;
   rimapp_srv.request.unit_id = active_id_;
  
-  START_TIMER(ttime);
+
   if (rimapp_client_.call(rimapp_srv)){
- 
-    if (!rimapp_srv.response.best_path.empty()) {
-      // Execute path
+    //ROS_INFO("PCI successfully called RIMAPP planner service");
+    rimapp_request_ = false;
 
-      if (rimapp_srv.response.stuck) {
-        rimapp_request_ = false;
-        target_reached_ = false;
-        ROS_INFO("RIMAPP aborted, give new target");
-        return;
-      }
-      if (rimapp_srv.response.best_path.size() > 1){
-        ROS_INFO("Executing prm-path");
-        ROS_WARN("print x of returned best path: %f, length: %d ", rimapp_srv.response.best_path[0].position.x, rimapp_srv.response.best_path.size());
-        std::vector<geometry_msgs::Pose> path_to_be_exe;
-            pci_manager_->executePath(rimapp_srv.response.best_path, path_to_be_exe,
-                                      PCIManager::ExecutionPathType::kGlobalPath);
-        int wp_pos_id = path_to_be_exe.size()-1;
-        ROS_WARN("Printing first pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[0].position.x, path_to_be_exe[0].position.y, path_to_be_exe[0].position.z);
-        ROS_WARN("Printing last pose in path in runrimapp x: %f, y: %f, z: %f. ", path_to_be_exe[wp_pos_id].position.x, path_to_be_exe[wp_pos_id].position.y, path_to_be_exe[wp_pos_id].position.z);
-        current_path_ = path_to_be_exe;
-      }
-
-    } else {
-      ROS_WARN("RIMAPP returned empty path");
-      ros::Duration(0.5).sleep();
-    }
   } else {
-    ROS_WARN("RIMAPP service failed or is already at target");
+    //ROS_WARN("RIMAPP service failed");
     ros::Duration(0.5).sleep();
-  }
-  if (rimapp_srv.response.final_target_reached) {
-    target_reached_ = true;
-
-    total_time_ = GET_ELAPSED_TIME(ttime);
-    ROS_WARN("REACHED FINAL TARGET, total time: %f", total_time_);
   }
 }
 

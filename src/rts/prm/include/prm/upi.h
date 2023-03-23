@@ -8,8 +8,10 @@
 
 #include <ros/ros.h>
 #include "rimapp_msgs/upi_planner.h"
+#include "rimapp_msgs/upi_ma_planner.h"
 #include "rimapp_msgs/pci_plan_path_single.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PointStamped.h"
 
 namespace search {
 
@@ -23,13 +25,19 @@ class Upi {
 
   struct planner_cli {
 
-    planner_cli(int id, const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+    planner_cli(Upi* upi, int id, const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
 
     ros::ServiceClient planner_client_;
     int id_;
+
+    Upi* upi_;
+
+
+    ros::Subscriber click_subscriber_;
+    void clickCallback(const geometry_msgs::PointStamped &pt);
   };
 
   private:
@@ -39,6 +47,7 @@ class Upi {
 
   // Planner service exposed to user
   ros::ServiceServer upi_planner_service_;
+  ros::ServiceServer upi_ma_planner_service_;
 
   bool upiPlanServiceCallback(
     rimapp_msgs::upi_planner::Request& req,
@@ -46,6 +55,9 @@ class Upi {
 
   // Struct for dynamic creation of a client to each robot, 
   // subscribing to their pci-planner service
+  bool upiMAPlanServiceCallback(
+  rimapp_msgs::upi_ma_planner::Request& req,
+  rimapp_msgs::upi_ma_planner::Response& res);
 
 
   std::vector<Upi::planner_cli*> planner_clients_;
@@ -54,11 +66,10 @@ class Upi {
 
   bool single_plan_req_;
 
-  void runService();
 
   bool callPci(int id, geometry_msgs::Pose pose);
 
-  
+  bool callPciSimple(int id, int x_target, int y_target, int z_target);
 
 };
 

@@ -48,8 +48,8 @@
 
 # Corridors
 - git:
-    local-name: src/misc/DecompROS/
-    uri: git@github.com:sikang/DecompROS.git
+    local-name: src/rts/custom_worlds/
+    uri: git@github.com:leonhartyao/gazebo_models_worlds_collection.git
 
 # sim
 - git:

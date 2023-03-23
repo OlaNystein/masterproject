@@ -15,6 +15,8 @@
 
 #include "rimapp_msgs/plan_path_single.h"
 
+#include "rimapp_msgs/Bestpath.h"
+
 #include <nav_msgs/Path.h>
 
 #include <prm/upi.h>
@@ -33,6 +35,8 @@ class RIMAPP {
   ros::NodeHandle nh_private_;
 
   ros::ServiceServer plan_service_;
+  
+  ros::Publisher best_path_pub_;
 
   ros::Subscriber pose_subscriber_;
   ros::Subscriber pose_stamped_subscriber_;
@@ -42,7 +46,14 @@ class RIMAPP {
 
   Upi* upi_;
 
-  std::vector<geometry_msgs::Pose> target_queue_;
+
+  std::vector<double> latencies_;
+  std::vector<double> all_latencies_;
+  std::vector<ros::Time*> timers_;
+  int num_queries_;
+  
+
+  std::vector<std::pair<geometry_msgs::Pose, int>> target_queue_;
 
   void runRimapp();
 
@@ -51,7 +62,7 @@ class RIMAPP {
     rimapp_msgs::plan_path_single::Request& req,
     rimapp_msgs::plan_path_single::Response& res);
 
-
+  void printLatency();
 };
 
 

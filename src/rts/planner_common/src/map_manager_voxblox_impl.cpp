@@ -172,6 +172,7 @@ MapManagerVoxblox<SDFServerType, SDFVoxelType>::getBoxStatusInVoxels(
           if (stop_at_unknown_voxel) {
             return VoxelStatus::kUnknown;
           }
+          
           current_status = VoxelStatus::kUnknown;
         } else if (voxel->distance <= distance_thres) {
           return VoxelStatus::kOccupied;
@@ -203,7 +204,6 @@ MapManagerVoxblox<SDFServerType, SDFVoxelType>::getPathStatus(
   voxblox::AnyIndex box_voxels(std::ceil(box_size.x() * voxel_size_inv),
                                std::ceil(box_size.y() * voxel_size_inv),
                                std::ceil(box_size.z() * voxel_size_inv));
-
   // Iterate over the ray.
   VoxelStatus current_status = VoxelStatus::kFree;
   for (const voxblox::GlobalIndex& global_index : global_voxel_indices) {
@@ -462,5 +462,7 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::extractLocalMapAlongAxis(
     }
   }
 }
+
+
 // }  // namespace gbplanner
 // }  // namespace explorer

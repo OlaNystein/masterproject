@@ -30,6 +30,7 @@ enable_icp: False
 icp_refine_roll_pitch: False
 accumulate_icp_corrections: True
 
+
 # !!! NOT IMPLEMENTED FOR VOXBLOX !!!
 # Augmentation
 #augment_free_frustum_enabled: true
