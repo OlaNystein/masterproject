@@ -31,27 +31,6 @@ namespace search {
 
 
 
-// bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
-//                            rimapp_msgs::plan_path_single::Response& res) {
-//   //
-//   res.stuck = false;
-//   //
-//   ROS_INFO("Single unit planner service reached");
-//   res.best_path.clear();
-//   ROS_WARN("Printing target before running planner x: %f, y: %f, z: %f. id: %d", req.target_pose.position.x, req.target_pose.position.y, req.target_pose.position.z, req.unit_id);
-//   prm_->setActiveUnit(req.unit_id);
-
-//   res.best_path = prm_->runPlanner(req.target_pose);
- 
-//   if (res.best_path.size() <= 1) {
-//     ROS_WARN("RIMAPP: No best path returned");
-//   }
-//   if (res.best_path.size() > 1){
-//     ROS_WARN("RIMAPP: Best path found");
-//   }
-//   res.final_target_reached = prm_->getTargetReachedSingle(req.unit_id);
-//   return true;
-// }
 
 bool RIMAPP::planServiceCallback(rimapp_msgs::plan_path_single::Request& req,
                            rimapp_msgs::plan_path_single::Response& res) {
@@ -95,14 +74,12 @@ void RIMAPP::runRimapp(){
       int id = target_queue_[0].second;
       ROS_INFO("MANAGER: planner for unit %d starting", id);
       target_queue_.erase(target_queue_.begin());
-      //ROS_INFO("Target queue size: %d", target_queue_.size());
       prm_->setActiveUnit(id);
       double lt = GET_ELAPSED_TIME(*(timers_[id]));
       latencies_[id] += lt;
       all_latencies_.push_back(lt);
-      //ROS_INFO("latency: %f", latencies_[id]);
       std::vector<geometry_msgs::Pose> best_path = prm_->runPlanner(target_pose);
-      //publish results to pci-bestpath topic med ID, riktig pci kjører drone
+      //publish results to pci-bestpath topic with ID
       
       if (best_path.size() <= 1) {
         ROS_WARN("MANAGER: No best path returned for unit %d, requeue a different target", id);
@@ -117,7 +94,7 @@ void RIMAPP::runRimapp(){
       res.best_path = best_path;
       best_path_pub_.publish(res);
       prm_->setUnitMovingState(id, true);
-      printLatency();
+      //printLatency();
     }
     cont = ros::ok();
     ros::spinOnce();

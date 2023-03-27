@@ -65,8 +65,6 @@ bool Upi::upiMAPlanServiceCallback(
 
 bool Upi::callPci(int id, geometry_msgs::Pose pose){
   rimapp_msgs::pci_plan_path_single upi_srv;
-  //std::string service = planner_clients_[id]->planner_client_.getService();
-  //ROS_INFO_STREAM("" << service);
   upi_srv.request.target = pose;
   upi_srv.request.unit_id = id;
   if(planner_clients_[id]->planner_client_.call(upi_srv)){
